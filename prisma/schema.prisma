@@ -1,0 +1,50 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id           String              @id @default(uuid())
+  name         String
+  billingTier  String              @default("free")
+  createdAt    DateTime            @default(now())
+  interactions ClientInteraction[]
+  healthChecks CustomerHealth[]
+  users        User[]
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  tenantId  String
+  createdAt DateTime @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+}
+
+model ClientInteraction {
+  id        String   @id @default(uuid())
+  payload   String
+  tenantId  String
+  processed Boolean  @default(false)
+  createdAt DateTime @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+}
+
+model CustomerHealth {
+  id                String   @id @default(uuid())
+  tenantId          String
+  riskScore         Int
+  confidence        String
+  rootCauses        String
+  recommendedAction String
+  status            String   @default("active")
+  correctionReason  String?
+  resetAt           DateTime?
+  createdAt         DateTime @default(now())
+  tenant            Tenant   @relation(fields: [tenantId], references: [id])
+}

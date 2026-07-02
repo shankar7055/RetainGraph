@@ -1,0 +1,361 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "RetainGraph API",
+    "description": "API documentation for the RetainGraph backend, featuring live Cognee graph integration and proactive customer health analysis.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Local development server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-api-key"
+      },
+      "TenantIdHeader": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-tenant-id"
+      }
+    }
+  },
+  "security": [
+    {
+      "ApiKeyAuth": []
+    }
+  ],
+  "paths": {
+    "/api/interactions/ingest": {
+      "post": {
+        "summary": "Ingest new client interaction",
+        "description": "Uploads unstructured client data (notes, emails, tickets) for the given tenant.",
+        "tags": ["Interactions"],
+        "security": [
+          {
+            "ApiKeyAuth": [],
+            "TenantIdHeader": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "payload": {
+                    "type": "string",
+                    "description": "The raw interaction text"
+                  }
+                },
+                "required": ["payload"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Interaction ingested successfully"
+          }
+        }
+      }
+    },
+    "/api/interactions/process": {
+      "post": {
+        "summary": "Process pending interactions",
+        "description": "Manually triggers background processing of any unprocessed client interactions for all tenants.",
+        "tags": ["Interactions"],
+        "responses": {
+          "202": {
+            "description": "Batch processing initiated"
+          }
+        }
+      }
+    },
+    "/api/chat": {
+      "post": {
+        "summary": "Graph Chat",
+        "description": "Queries the tenant's Cognee knowledge graph and returns a structured response using the retrieved context.",
+        "tags": ["Chat"],
+        "security": [
+          {
+            "ApiKeyAuth": [],
+            "TenantIdHeader": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "question": {
+                    "type": "string"
+                  }
+                },
+                "required": ["question"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Streaming markdown response"
+          }
+        }
+      }
+    },
+    "/api/chat/naive": {
+      "post": {
+        "summary": "Naive Chat",
+        "description": "Queries the database for recent interactions and answers the question without graph context.",
+        "tags": ["Chat"],
+        "security": [
+          {
+            "ApiKeyAuth": [],
+            "TenantIdHeader": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "question": {
+                    "type": "string"
+                  }
+                },
+                "required": ["question"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Streaming markdown response"
+          }
+        }
+      }
+    },
+    "/api/tenants": {
+      "get": {
+        "summary": "List all tenants",
+        "description": "Fetches a list of all tenants along with their latest health check status.",
+        "tags": ["Tenants"],
+        "responses": {
+          "200": {
+            "description": "A list of tenants"
+          }
+        }
+      }
+    },
+    "/api/tenants/{id}/analyze": {
+      "post": {
+        "summary": "Manually trigger health evaluation",
+        "description": "Forces an immediate health evaluation for the given tenant.",
+        "tags": ["Health"],
+        "security": [
+          {
+            "ApiKeyAuth": [],
+            "TenantIdHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Newly generated CustomerHealth record"
+          }
+        }
+      }
+    },
+    "/api/tenants/{id}/health-history": {
+      "get": {
+        "summary": "Get health history",
+        "description": "Fetches the risk score trend history for a given tenant.",
+        "tags": ["Health"],
+        "security": [
+          {
+            "ApiKeyAuth": [],
+            "TenantIdHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of health records"
+          }
+        }
+      }
+    },
+    "/api/tenants/{id}/generate-email": {
+      "post": {
+        "summary": "Generate Outreach Email",
+        "description": "Generates a contextual outreach email using the live graph context and the latest recommended action.",
+        "tags": ["Tenants"],
+        "security": [
+          {
+            "ApiKeyAuth": [],
+            "TenantIdHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Generated email subject and body"
+          }
+        }
+      }
+    },
+    "/api/tenants/{id}/graph-stats": {
+      "get": {
+        "summary": "Get knowledge graph stats",
+        "description": "Retrieves interaction counts and node/edge statistics for a tenant's dataset.",
+        "tags": ["Stats"],
+        "security": [
+          {
+            "ApiKeyAuth": [],
+            "TenantIdHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Graph depth metrics"
+          }
+        }
+      }
+    },
+    "/api/tenants/{id}/forget": {
+      "post": {
+        "summary": "Memory Reset",
+        "description": "Deletes the tenant's dataset from Cognee, marks health checks as reset, and re-queues interactions.",
+        "tags": ["Tenants"],
+        "security": [
+          {
+            "ApiKeyAuth": [],
+            "TenantIdHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Memory reset successful"
+          }
+        }
+      }
+    },
+    "/api/health/correct": {
+      "post": {
+        "summary": "Correct false alarm",
+        "description": "Dismisses an active health record and stores procedural memory for future evaluations.",
+        "tags": ["Health"],
+        "security": [
+          {
+            "ApiKeyAuth": [],
+            "TenantIdHeader": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "healthRecordId": {
+                    "type": "string"
+                  },
+                  "correctionReason": {
+                    "type": "string"
+                  }
+                },
+                "required": ["healthRecordId", "correctionReason"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Correction recorded successfully"
+          }
+        }
+      }
+    },
+    "/api/patterns": {
+      "get": {
+        "summary": "Pattern Detection",
+        "description": "Searches across multiple tenant datasets to detect product-wide patterns or systemic signals.",
+        "tags": ["Patterns"],
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Identified pattern and affected tenants"
+          }
+        }
+      }
+    }
+  }
+}
