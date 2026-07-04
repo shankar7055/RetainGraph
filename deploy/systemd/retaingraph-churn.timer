@@ -1,0 +1,21 @@
+# /etc/systemd/system/retaingraph-churn.timer
+#
+# Runs retaingraph-churn.service every 15 minutes, with a randomized delay to
+# avoid a thundering-herd hit on Cognee/Groq if you ever run more than one host.
+# For a hackathon demo, feel free to drop OnCalendar to every 2-5 min so the
+# proactive flag fires visibly during a live walkthrough.
+
+[Unit]
+Description=Run RetainGraph churn scan every 15 minutes
+Documentation=https://github.com/YOUR_ORG/retaingraph
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=15min
+RandomizedDelaySec=30
+AccuracySec=1min
+Persistent=true
+Unit=retaingraph-churn.service
+
+[Install]
+WantedBy=timers.target

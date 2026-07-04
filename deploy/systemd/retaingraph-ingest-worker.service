@@ -1,0 +1,57 @@
+# /etc/systemd/system/retaingraph-ingest-worker.service
+#
+# RetainGraph — Ingest/Cognify worker
+# Consumes the BullMQ "ingest" queue: pulls a pending ClientInteraction, calls
+# Cognee's add() then cognify() via @cognee/cognee-ts, polls dataset status, and
+# flips the record to ready/failed. Kept as its own process so an LLM-bound cognify
+# call can never stall the API's HTTP thread.
+
+[Unit]
+Description=RetainGraph Ingest/Cognify Worker
+Documentation=https://github.com/YOUR_ORG/retaingraph
+After=network-online.target postgresql.service redis-server.service retaingraph-api.service
+Wants=network-online.target
+Requires=postgresql.service redis-server.service
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=retaingraph
+Group=retaingraph
+WorkingDirectory=/opt/retaingraph/api
+
+EnvironmentFile=/opt/retaingraph/shared/retaingraph.env
+Environment=NODE_ENV=production
+Environment=WORKER_CONCURRENCY=4
+
+ExecStart=/usr/bin/node dist/workers/ingestWorker.js
+
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=30
+TimeoutStopSec=30
+
+# --- Resource limits ---
+LimitNOFILE=65536
+MemoryMax=512M
+CPUQuota=150%
+
+# --- Hardening ---
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/retaingraph/api/logs
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=retaingraph-ingest-worker
+
+[Install]
+WantedBy=multi-user.target

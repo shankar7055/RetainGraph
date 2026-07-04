@@ -1,0 +1,49 @@
+# /etc/systemd/system/retaingraph-churn.service
+#
+# RetainGraph — Proactive churn scan (one-shot)
+# Fetches the last 24h of "ready" interactions, pulls historical graph context from
+# Cognee, asks Groq to classify churn risk, and writes an InsightEvent + simulated
+# Slack webhook for any positive result. Triggered on a schedule by
+# retaingraph-churn.timer rather than an in-process node-cron loop — this way a
+# crashed run doesn't silently stop future scans, restarts/backoff are systemd's
+# job, and `systemctl status` / `journalctl` give you a clean audit trail per run
+# for demo debugging.
+
+[Unit]
+Description=RetainGraph Proactive Churn Scan (one-shot)
+Documentation=https://github.com/YOUR_ORG/retaingraph
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=retaingraph
+Group=retaingraph
+WorkingDirectory=/opt/retaingraph/api
+
+EnvironmentFile=/opt/retaingraph/shared/retaingraph.env
+Environment=NODE_ENV=production
+
+ExecStart=/usr/bin/node dist/workers/churnScan.js
+
+TimeoutStartSec=120
+
+# --- Resource limits ---
+MemoryMax=384M
+CPUQuota=100%
+
+# --- Hardening ---
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/retaingraph/api/logs
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=retaingraph-churn

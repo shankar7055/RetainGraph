@@ -1,0 +1,60 @@
+# /etc/systemd/system/retaingraph-api.service
+#
+# RetainGraph — Express API service
+# Handles: POST /api/interactions/ingest, POST /api/chat, dashboard/account REST routes.
+# Does NOT run cognify or the churn worker itself — those are separate units (see
+# retaingraph-ingest-worker.service and retaingraph-churn.service/.timer) so a slow
+# LLM call never blocks incoming HTTP requests.
+
+[Unit]
+Description=RetainGraph API (Express + Prisma)
+Documentation=https://github.com/YOUR_ORG/retaingraph
+After=network-online.target postgresql.service redis-server.service
+Wants=network-online.target
+Requires=postgresql.service redis-server.service
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=retaingraph
+Group=retaingraph
+WorkingDirectory=/opt/retaingraph/api
+
+# Load secrets/config (DATABASE_URL, REDIS_URL, GROQ_API_KEY, COGNEE_BASE_URL, COGNEE_API_KEY, PORT, etc.)
+EnvironmentFile=/opt/retaingraph/shared/retaingraph.env
+Environment=NODE_ENV=production
+
+# Run Prisma migrations before boot so the API never starts against a stale schema.
+ExecStartPre=/usr/bin/npx prisma migrate deploy
+ExecStart=/usr/bin/node dist/server.js
+
+Restart=on-failure
+RestartSec=3
+TimeoutStartSec=30
+TimeoutStopSec=15
+
+# --- Resource limits (tune per host; hackathon VM defaults) ---
+LimitNOFILE=65536
+MemoryMax=768M
+CPUQuota=150%
+
+# --- Hardening ---
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/retaingraph/api/logs
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+
+# --- Logging ---
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=retaingraph-api
+
+[Install]
+WantedBy=multi-user.target
