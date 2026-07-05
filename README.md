@@ -64,10 +64,11 @@ graph TD
 
 **Prerequisites:** Node 20+, `COGNEE_API_URL`, `COGNEE_API_KEY`, `GROQ_API_KEY`
 
-1. **Install & Seed Database**
+1. **Setup & Seed Backend Database**
    ```bash
+   cd api
    npm install
-   npx prisma migrate dev
+   npx prisma db push
    npx prisma db seed
    ```
 2. **Start Backend**
@@ -76,9 +77,40 @@ graph TD
    ```
 3. **Start Frontend**
    ```bash
-   cd frontend
+   cd ../web
    npm install
    npm run dev
    ```
 
 *Note: The platform ships with a `COGNEE_MOCK_MODE=true` toggle allowing full UI testing with dummy graph data before connecting the live Cognee environment.*
+
+---
+
+## 🚀 Deployment Guide
+
+### 1. Backend (Render)
+You can deploy the backend using the included `render.yaml` Blueprint or manually:
+
+#### Manual Setup:
+1. Create a **Web Service** on Render connected to this repository.
+2. Configure the following parameters:
+   - **Root Directory:** `api`
+   - **Build Command:** `npm install && npm run build && npx prisma generate`
+   - **Start Command:** `node dist/server.js`
+3. Add the following Environment Variables in the Render settings:
+   - `DATABASE_URL`: `file:./dev.db`
+   - `COGNEE_API_URL`: Your Cognee URL
+   - `COGNEE_API_KEY`: Your Cognee API Key
+   - `COGNEE_MOCK_MODE`: `false` (or `true` if testing offline)
+   - `GROQ_API_KEY`: Your Groq API Key
+   - `GROQ_MODEL`: `llama-3.3-70b-versatile`
+
+### 2. Frontend (Vercel)
+1. Create a project on Vercel connected to this repository.
+2. In the project settings, configure:
+   - **Root Directory:** `web`
+   - **Build Command:** `npm run build`
+   - **Output Directory:** `dist`
+3. Add the following environment variable to connect the frontend to the deployed backend:
+   - `VITE_API_BASE`: `https://<your-render-backend-url>/api/v1`
+4. Deploy the project. Vercel will build and serve the app as a standard Vite SPA/SSR static page.
