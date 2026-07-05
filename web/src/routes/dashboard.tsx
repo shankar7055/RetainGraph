@@ -497,6 +497,16 @@ const SegmentedBar = (props: any) => {
   return <g>{segmentList}</g>;
 };
 
+interface CopilotMessage {
+  sender: string;
+  text: string;
+  confidence?: string;
+  reasoning?: string;
+  citations?: string[];
+  graphNodes?: string[];
+  linkedTimelines?: string[];
+}
+
 function Dashboard() {
   const [activeTab, setActiveTab] = useState("1M");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -505,7 +515,7 @@ function Dashboard() {
 
   // State for AI Copilot Chat
   const [copilotInput, setCopilotInput] = useState("");
-  const [copilotMessages, setCopilotMessages] = useState([
+  const [copilotMessages, setCopilotMessages] = useState<CopilotMessage[]>([
     {
       sender: "ai",
       text: "I am RetainGraph's cognitive copilot. Ask me anything about this customer's graph, sentiment trends, or support interactions."
@@ -1843,7 +1853,7 @@ function Dashboard() {
                                   <strong>AI Reasoning:</strong> {msg.reasoning}
                                 </div>
                                 <div className="flex flex-wrap gap-1 mt-1">
-                                  {msg.citations?.map((c, i) => (
+                                  {msg.citations?.map((c: string, i: number) => (
                                     <span key={i} className="px-1.5 py-0.5 bg-neutral-900 border border-[#202028] text-[9px] rounded text-white">
                                       {c}
                                     </span>
