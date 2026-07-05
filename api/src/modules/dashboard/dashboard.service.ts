@@ -75,12 +75,12 @@ export class DashboardService {
     const monthCounts = [45, 62, 58, 79, 94, 110, 125, 142, 130, 115, 105, 95];
     for (const item of allInteractions) {
       const m = new Date(item.createdAt).getMonth();
-      monthCounts[m] += 3; // Boost each real interaction to make changes visible
+      monthCounts[m] = (monthCounts[m] ?? 0) + 3; // Boost each real interaction to make changes visible
     }
 
     const parsedCampaignData = monthNames.map((name, idx) => ({
       name,
-      val: Math.max(5, monthCounts[idx] * 4),
+      val: Math.max(5, (monthCounts[idx] ?? 0) * 4),
       highlight: idx === new Date().getMonth(),
     }));
 
