@@ -697,6 +697,7 @@ function Dashboard() {
       if (activeView !== "Briefs" || !selectedTenantId) return;
       console.log("[Dashboard] Loading brief for tenant ID:", selectedTenantId);
       setActiveBrief(null); // Clear stale brief
+      setIsBriefLoading(true);
       try {
         const res = await fetch(`${API_BASE}/accounts/${selectedTenantId}/brief`);
         if (res.ok) {
@@ -708,6 +709,8 @@ function Dashboard() {
         }
       } catch (e) {
         console.error("Failed to fetch pre-call brief:", e);
+      } finally {
+        setIsBriefLoading(false);
       }
     }
     loadBrief();
@@ -2468,49 +2471,52 @@ function Dashboard() {
                   <div>
                     <h2 className="text-xl font-bold text-white">CS Meeting Prep Briefing</h2>
                     <p className="text-xs text-primary font-semibold mt-0.5">
-                      Subject Account: {activeBrief ? (realAccounts.find(a => a.id === selectedTenantId)?.name || selectedTenantId) : "Acme Corp"} • Prepared by RetainGraph AI
+                      Subject Account: {realAccounts.find(a => a.id === selectedTenantId)?.name || selectedCompany} • Prepared by RetainGraph AI
                     </p>
                   </div>
                   <div className="text-right">
                     <span className="text-[10px] text-muted-foreground block">Prep Score</span>
                     <span className="text-lg font-black text-emerald-500">
-                      {activeBrief ? Math.round(activeBrief.briefConfidence * 100) : 92} / 100
+                      {activeBrief ? `${Math.round(activeBrief.briefConfidence * 100)} / 100` : "--"}
                     </span>
                   </div>
                 </div>
 
-                <div className="space-y-4 text-xs text-muted-foreground">
-                  <div className="space-y-1">
-                    <h3 className="text-xs font-bold text-white uppercase tracking-wider">Executive Summary</h3>
-                    <p>{activeBrief?.executiveSummary || "Acme Corp is presenting high risk due to API Key authorization failures and support backlogs. Johnathan Wick has scheduled this call to alignment pricing concerns and expansion potential."}</p>
+                {isBriefLoading ? (
+                  <div className="flex flex-col items-center justify-center py-16 space-y-4">
+                    <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                    <span className="text-muted-foreground animate-pulse text-xs">Generating pre-call brief via Cognee & LLM...</span>
                   </div>
+                ) : (
+                  <div className="space-y-4 text-xs text-muted-foreground">
+                    <div className="space-y-1">
+                      <h3 className="text-xs font-bold text-white uppercase tracking-wider">Executive Summary</h3>
+                      <p>{activeBrief?.executiveSummary || `No briefing details retrieved for ${realAccounts.find(a => a.id === selectedTenantId)?.name || selectedCompany}.`}</p>
+                    </div>
 
-                  <div className="space-y-1">
-                    <h3 className="text-xs font-bold text-white uppercase tracking-wider">Key Talking Points</h3>
-                    <ul className="list-disc pl-5 space-y-1.5">
-                      {activeBrief?.recommendedTalkingPoints && activeBrief.recommendedTalkingPoints.length > 0 ? (
-                        activeBrief.recommendedTalkingPoints.map((point: string, i: number) => (
-                          <li key={i}>{point}</li>
-                        ))
-                      ) : (
-                        <>
-                          <li>Highlight engineers resolving the API gateway timeouts.</li>
-                          <li>Address the competitive comparison with *RelateGraph* directly with Wick.</li>
-                          <li>Offer a dedicated architect to sync their Neo4j/Cognee data pipelines.</li>
-                        </>
-                      )}
-                    </ul>
-                  </div>
+                    <div className="space-y-1">
+                      <h3 className="text-xs font-bold text-white uppercase tracking-wider">Key Talking Points</h3>
+                      <ul className="list-disc pl-5 space-y-1.5">
+                        {activeBrief?.recommendedTalkingPoints && activeBrief.recommendedTalkingPoints.length > 0 ? (
+                          activeBrief.recommendedTalkingPoints.map((point: string, i: number) => (
+                            <li key={i}>{point}</li>
+                          ))
+                        ) : (
+                          <li className="italic">No talking points generated.</li>
+                        )}
+                      </ul>
+                    </div>
 
-                  <div className="space-y-1">
-                    <h3 className="text-xs font-bold text-white uppercase tracking-wider">Open Commitments</h3>
-                    <p>
-                      {activeBrief?.commitments && activeBrief.commitments.length > 0
-                        ? activeBrief.commitments.join(", ")
-                        : "Deliver the custom webhook connector module requested by Cho on Support Ticket #40921 by next Wednesday."}
-                    </p>
+                    <div className="space-y-1">
+                      <h3 className="text-xs font-bold text-white uppercase tracking-wider">Open Commitments</h3>
+                      <p>
+                        {activeBrief?.commitments && activeBrief.commitments.length > 0
+                          ? activeBrief.commitments.join(", ")
+                          : "No open commitments documented."}
+                      </p>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           )}

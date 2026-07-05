@@ -110,14 +110,21 @@ export class MemoryService {
             } else if (section === 'connections' && trimmed.includes("-->")) {
               const parts = trimmed.split("--[");
               if (parts.length === 2) {
-                const source = parts[0].trim();
+                const sourceRaw = parts[0].trim();
                 const rest = parts[1].split("]-->");
                 if (rest.length === 2) {
                   const relation = rest[0].trim();
-                  const targetPart = rest[1].split(" (")[0].trim();
+                  const targetPartRaw = rest[1].split(" (")[0].trim();
+                  
+                  const sourceMatch = sourceRaw.match(/(.*)\[(.*)\]$/);
+                  const source = sourceMatch ? sourceMatch[1].trim() : sourceRaw;
+                  
+                  const targetMatch = targetPartRaw.match(/(.*)\[(.*)\]$/);
+                  const target = targetMatch ? targetMatch[1].trim() : targetPartRaw;
+
                   edges.push({
                     source,
-                    target: targetPart,
+                    target,
                     relation
                   });
                 }
