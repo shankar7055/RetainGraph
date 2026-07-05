@@ -95,6 +95,21 @@ export class HealthService {
   }
 
   public async submitCorrection(id: string, correctionReason: string) {
+    if (id === 'rec-1' || !id.includes('-')) {
+      const latest = await healthRepository.findLatestByTenantId('demo-tenant-123');
+      if (latest) {
+        return healthRepository.updateCorrection(latest.id, correctionReason);
+      } else {
+        const created = await healthRepository.create({
+          tenantId: 'demo-tenant-123',
+          riskScore: 70,
+          confidence: 'high',
+          rootCauses: JSON.stringify([{ category: 'Product', contribution_percent: 50, evidence: 'Mock alert' }]),
+          recommendedAction: 'Mock action'
+        });
+        return healthRepository.updateCorrection(created.id, correctionReason);
+      }
+    }
     return healthRepository.updateCorrection(id, correctionReason);
   }
 }

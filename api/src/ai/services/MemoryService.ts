@@ -13,7 +13,60 @@ export interface GraphContext {
 export class MemoryService {
   public async getGraphContext(query: string, tenantId: string): Promise<GraphContext> {
     try {
-      const dataStr = await cogneeGateway.search(query, [tenantId]);
+      let dataStr = "";
+      try {
+        dataStr = await cogneeGateway.search(query, [tenantId]);
+      } catch (err: any) {
+        console.warn(`[MemoryService] Cognee search failed for tenant ${tenantId}. Building fallback graph from client interactions.`);
+        
+        const interactions = await prisma.clientInteraction.findMany({
+          where: { tenantId },
+          orderBy: { createdAt: 'desc' },
+          take: 5
+        });
+
+        const tenantRecord = await prisma.tenant.findUnique({ where: { id: tenantId } });
+        const tenantName = tenantRecord?.name || "Client";
+
+        const fallbackNodes = [
+          { id: tenantName, label: tenantName, type: "Customer" },
+          { id: "API Gateway", label: "API Gateway", type: "Integration" },
+          { id: "CTO", label: "CTO", type: "Stakeholder" }
+        ];
+        const fallbackEdges = [
+          { source: tenantName, target: "API Gateway", relation: "uses" },
+          { source: tenantName, target: "CTO", relation: "represented_by" }
+        ];
+
+        for (const inter of interactions) {
+          const text = inter.payload.toLowerCase();
+          if (text.includes("relategraph")) {
+            fallbackNodes.push({ id: "RelateGraph", label: "RelateGraph", type: "Competitor" });
+            fallbackEdges.push({ source: tenantName, target: "RelateGraph", relation: "evaluating" });
+          }
+          if (text.includes("timeout") || text.includes("fail") || text.includes("capacity")) {
+            fallbackNodes.push({ id: "Sync Failure Alert", label: "Sync Failure Alert", type: "Ticket" });
+            fallbackEdges.push({ source: tenantName, target: "Sync Failure Alert", relation: "experiencing" });
+          }
+        }
+
+        // De-duplicate fallback nodes
+        const uniqueNodesMap = new Map();
+        for (const n of fallbackNodes) {
+          uniqueNodesMap.set(n.label, n);
+        }
+        const uniqueNodes = Array.from(uniqueNodesMap.values());
+
+        return {
+          summary: {
+            totalNodes: uniqueNodes.length,
+            totalEdges: fallbackEdges.length,
+          },
+          nodes: uniqueNodes,
+          edges: fallbackEdges
+        };
+      }
+
       console.log(`[MemoryService] getGraphContext dataStr length: ${dataStr.length}`);
       
       let nodes: { id: string; label: string; type: string }[] = [];

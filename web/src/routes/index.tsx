@@ -4,6 +4,9 @@ import { ArrowUpRight, Zap, Brain, Workflow, Shield, Cpu, Sparkles, Boxes, Radar
 import heroNoise from "@/assets/hero-noise.jpg";
 import orb from "@/assets/orb.jpg";
 import arch from "@/assets/architecture.jpg";
+import insightNewOne from "@/assets/insight_black_one.png";
+import insightNewTwo from "@/assets/insight_black_two.png";
+import insightNewThree from "@/assets/insight_black_three.png";
 import { useScrollScene, useMarquee } from "@/lib/scroll";
 import { Magnetic, TiltCard, Spotlight } from "@/components/site/Interactive";
 import { LiquidMetal } from '@paper-design/shaders-react';
@@ -63,7 +66,7 @@ export function Home() {
               distortion={0.4}
               contour={0.4}
               angle={0}
-              speed={1}
+              speed={0.3}
               scale={0.6}
               fit="contain"
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
@@ -144,8 +147,13 @@ export function Home() {
         {/* DIVIDER with parallax bolt */}
         <section className="relative py-40 grain border-y border-border overflow-hidden">
           <div className="mx-auto max-w-[1400px] px-6 md:px-10 flex items-center justify-center">
-            <div data-parallax="0.5" className="grid place-items-center w-24 h-24 bg-primary text-primary-foreground rounded-md">
-              <Zap className="w-10 h-10" />
+            <div data-parallax="0.5" className="grid place-items-center w-96 h-96 bg-transparent">
+              <model-viewer
+                src="/luwai_HD_1783185489195.glb"
+                disable-zoom="true"
+                interaction-prompt="none"
+                style={{ width: "100%", height: "100%" }}
+              />
             </div>
           </div>
         </section>
@@ -301,17 +309,25 @@ export function Home() {
             </div>
           </div>
           <div className="grid md:grid-cols-3 gap-6" data-stagger>
-            {[1, 2, 3].map((i) => (
-              <Link to="/about" key={i} className="group block">
-                <TiltCard className="aspect-[4/3] bg-card border border-border rounded-md overflow-hidden mb-4 grain">
-                  <div className="w-full h-full grid-bg opacity-40" />
-                </TiltCard>
-                <div className="eyebrow mb-2">Jul 04, 2026</div>
-                <h3 className="font-display text-xl group-hover:text-muted-foreground transition-colors">
-                  {["Why your AI outputs feel underbaked", "Scoring the seven traits of a durable agent", "From prompt to protocol — a builder's field guide"][i - 1]}
-                </h3>
-              </Link>
-            ))}
+            {[1, 2, 3].map((i) => {
+              const cardImages = [insightNewOne, insightNewTwo, insightNewThree];
+              return (
+                <Link to="/about" key={i} className="group block">
+                  <TiltCard className="aspect-[4/3] bg-[#09090b] border border-border rounded-md overflow-hidden mb-4 relative">
+                    <img 
+                      src={cardImages[i - 1]} 
+                      alt=""
+                      className="w-full h-full object-cover opacity-60 group-hover:opacity-85 group-hover:scale-[1.03] transition-all duration-700" 
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#09090b] via-transparent to-transparent pointer-events-none opacity-40" />
+                  </TiltCard>
+                  <div className="eyebrow mb-2">Jul 04, 2026</div>
+                  <h3 className="font-display text-xl group-hover:text-muted-foreground transition-colors">
+                    {["Why your AI outputs feel underbaked", "Scoring the seven traits of a durable agent", "From prompt to protocol — a builder's field guide"][i - 1]}
+                  </h3>
+                </Link>
+              );
+            })}
           </div>
         </section>
       </div>

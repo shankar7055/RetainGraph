@@ -80,11 +80,7 @@ export function Footer() {
             <div className="grid place-items-center w-16 h-16 text-white border border-white/20 rounded-md overflow-hidden">
               <model-viewer
                 ref={modelRef}
-                onClick={handleModelClick}
                 src="/luwai_HD_1783185489195.glb"
-                auto-rotate="true"
-                rotation-per-second="90deg"
-                camera-controls="true"
                 disable-zoom="true"
                 interaction-prompt="none"
                 style={{ width: "100%", height: "100%" }}
@@ -120,7 +116,7 @@ export function Footer() {
         </div>
       </div>
       <div aria-hidden className="select-none pointer-events-none overflow-hidden">
-        <div className="text-surface font-display font-black leading-[0.8] tracking-tighter text-center whitespace-nowrap" style={{ fontSize: "clamp(6rem, 26vw, 24rem)" }}>
+        <div className="text-white/10 font-display font-black leading-[0.8] tracking-tighter text-center whitespace-nowrap" style={{ fontSize: "clamp(6rem, 26vw, 24rem)" }}>
           retaingraph
         </div>
       </div>

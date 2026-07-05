@@ -21,6 +21,15 @@ export class AnalyticsRepository {
     return prisma.clientInteraction.count();
   }
 
+  public async getInteractionsBreakdown() {
+    const total = await prisma.clientInteraction.count();
+    const emails = await prisma.clientInteraction.count({ where: { payload: { contains: 'email' } } });
+    const tickets = await prisma.clientInteraction.count({ where: { payload: { contains: 'ticket' } } });
+    const meetings = await prisma.clientInteraction.count({ where: { payload: { contains: 'transcript' } } });
+    const other = total - (emails + tickets + meetings);
+    return { emails, tickets, meetings, other: other > 0 ? other : 0, total };
+  }
+
   public async getAverageRiskScore() {
     const agg = await prisma.customerHealth.aggregate({
       where: { status: 'active' },

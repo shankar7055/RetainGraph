@@ -1,10 +1,12 @@
 import { Request, Response } from 'express';
 import { healthService } from './health.service';
+import { healthProcessor } from '../../workers/health/processor';
 
 export class HealthController {
   public async getHealth(req: Request, res: Response) {
     try {
       const id = req.params.id as string;
+      await healthProcessor.evaluateTenantHealth(id);
       const score = await healthService.getHealthScore(id);
       return res.json(score);
     } catch (error) {

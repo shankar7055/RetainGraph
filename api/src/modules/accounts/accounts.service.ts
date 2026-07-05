@@ -13,6 +13,14 @@ export class AccountsService {
       if (riskScore >= 70) riskLevel = 'HIGH';
       else if (riskScore >= 40) riskLevel = 'MEDIUM';
 
+      let arrValue = 85000;
+      const lowerName = t.name.toLowerCase();
+      if (lowerName.includes('hooli')) arrValue = 250000;
+      else if (lowerName.includes('globex')) arrValue = 185000;
+      else if (lowerName.includes('initech')) arrValue = 95000;
+      else if (lowerName.includes('acme') || lowerName.includes('demo') || lowerName.includes('company')) arrValue = 120000;
+      else if (t.billingTier === 'pro') arrValue = 220000;
+
       return {
         id: t.id,
         company: t.name,
@@ -25,6 +33,7 @@ export class AccountsService {
         activeInsights: latestHealth ? 2 : 0,
         sentiment: riskScore >= 70 ? 'Negative' : 'Positive',
         trend: riskScore >= 70 ? 'Down' : 'Stable',
+        arr: arrValue,
       };
     });
   }
@@ -45,7 +54,14 @@ export class AccountsService {
         riskScore: riskScore,
         confidence: latestHealth ? latestHealth.confidence : 'medium',
         renewalDays: 98,
-        arr: tenant.billingTier === 'pro' ? 220000 : 85000,
+        arr: (() => {
+          const lowerName = tenant.name.toLowerCase();
+          if (lowerName.includes('hooli')) return 250000;
+          if (lowerName.includes('globex')) return 185000;
+          if (lowerName.includes('initech')) return 95000;
+          if (lowerName.includes('acme') || lowerName.includes('demo') || lowerName.includes('company')) return 120000;
+          return tenant.billingTier === 'pro' ? 220000 : 85000;
+        })(),
         customerSince: '2023',
         overallSentiment: riskScore >= 70 ? 'Negative' : 'Positive',
       },

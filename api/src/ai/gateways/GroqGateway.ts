@@ -24,7 +24,24 @@ export class GroqGateway {
     if (responseFormat) {
       params.response_format = responseFormat;
     }
-    return this.client.chat.completions.create(params);
+
+    let retries = 3;
+    let delay = 3000;
+    while (retries > 0) {
+      try {
+        return await this.client.chat.completions.create(params);
+      } catch (error: any) {
+        if (error.status === 429 && retries > 1) {
+          console.warn(`[GroqGateway] Rate limit hit (429). Retrying in ${delay}ms...`);
+          await new Promise((res) => setTimeout(res, delay));
+          retries--;
+          delay *= 2;
+        } else {
+          throw error;
+        }
+      }
+    }
+    throw new Error('Groq API failed after max retries.');
   }
 }
 

@@ -60,11 +60,7 @@ export function Nav() {
             <span className="grid place-items-center w-8 h-8 bg-transparent text-primary-foreground rounded-sm overflow-hidden">
               <model-viewer
                 ref={modelRef}
-                onClick={handleModelClick}
                 src="/luwai_HD_1783185489195.glb"
-                auto-rotate="true"
-                rotation-per-second="90deg"
-                camera-controls="true"
                 disable-zoom="true"
                 interaction-prompt="none"
                 style={{ width: "100%", height: "100%" }}

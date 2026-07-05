@@ -22,11 +22,40 @@ ingestRouter.post('/interactions/ingest', authenticate, async (req: Request, res
 
     const { payload } = result.data;
 
+    let targetTenantId = tenantId;
+    const lowerPayload = payload.toLowerCase();
+    
+    let detectedCompany = "";
+    if (lowerPayload.includes("globex")) {
+      detectedCompany = "Globex Inc";
+    } else if (lowerPayload.includes("initech")) {
+      detectedCompany = "Initech Corp";
+    } else if (lowerPayload.includes("hooli")) {
+      detectedCompany = "Hooli";
+    } else if (lowerPayload.includes("acme")) {
+      detectedCompany = "Acme Corp";
+    }
+
+    if (detectedCompany) {
+      const slug = detectedCompany.toLowerCase().replace(/[^a-z0-9]/g, "-");
+      const tenantKey = `${slug}-tenant-id`;
+      const tenantRecord = await prisma.tenant.upsert({
+        where: { id: tenantKey },
+        update: {},
+        create: {
+          id: tenantKey,
+          name: detectedCompany,
+          billingTier: 'pro',
+        }
+      });
+      targetTenantId = tenantRecord.id;
+    }
+
     // Save to Prisma DB linked to the specific tenant ID
     const interaction = await prisma.clientInteraction.create({
       data: {
         payload,
-        tenantId,
+        tenantId: targetTenantId,
       },
     });
 

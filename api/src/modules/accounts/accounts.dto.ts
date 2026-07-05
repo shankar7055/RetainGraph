@@ -10,6 +10,7 @@ export interface AccountListItemResponse {
   activeInsights: number;
   sentiment: string;
   trend: string;
+  arr?: number;
 }
 
 export interface AccountDetailsResponse {

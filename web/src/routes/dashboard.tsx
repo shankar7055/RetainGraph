@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import React, { useState, useEffect } from "react";
+import * as d3 from "d3";
 import { 
   BarChart as ReBarChart, 
   Bar, 
@@ -365,7 +366,10 @@ export function PieSlice({ index, data, innerRadius = 30, hoveredIndex, setHover
   const endPercent = (accumulated + item.value) / total;
 
   const startAngle = startPercent * 2 * Math.PI;
-  const endAngle = endPercent * 2 * Math.PI;
+  let endAngle = endPercent * 2 * Math.PI;
+  if (endAngle - startAngle >= 2 * Math.PI * 0.999) {
+    endAngle = startAngle + 2 * Math.PI * 0.999;
+  }
 
   const getCoordinates = (angle: number, radius: number) => {
     return {
@@ -439,35 +443,20 @@ export const Route = createFileRoute("/dashboard")({
 
 // Mock data for main sales stacked bar chart
 const salesData = [
-  { day: "Mar 22", New: 6, Existing: 8 },
-  { day: "Mar 23", New: 7, Existing: 7 },
-  { day: "Mar 24", New: 5, Existing: 9 },
-  { day: "Mar 25", New: 8, Existing: 6 },
-  { day: "Mar 26", New: 4, Existing: 8 },
-  { day: "Mar 27", New: 7, Existing: 5 },
-  { day: "Mar 28", New: 9, Existing: 7 },
-  { day: "Mar 29", New: 6, Existing: 8 },
-  { day: "Mar 30", New: 5, Existing: 7 },
-  { day: "Mar 31", New: 8, Existing: 9 },
-  { day: "Apr 1", New: 9, Existing: 6 },
-  { day: "Apr 2", New: 7, Existing: 8 },
-  { day: "Apr 3", New: 6, Existing: 7 },
-  { day: "Apr 4", New: 8, Existing: 5 },
-  { day: "Apr 5", New: 9, Existing: 9 },
-  { day: "Apr 6", New: 11, Existing: 7 },
-  { day: "Apr 7", New: 6, Existing: 8 },
-  { day: "Apr 8", New: 5, Existing: 7 },
-  { day: "Apr 9", New: 8, Existing: 6 },
-  { day: "Apr 10", New: 9, Existing: 8 },
-  { day: "Apr 11", New: 6, Existing: 7 },
-  { day: "Apr 12", New: 8, Existing: 9 },
-  { day: "Apr 13", New: 10, Existing: 5 },
-  { day: "Apr 14", New: 7, Existing: 8 },
-  { day: "Apr 15", New: 6, Existing: 7 },
-  { day: "Apr 16", New: 8, Existing: 6 },
-  { day: "Apr 17", New: 5, Existing: 9 },
-  { day: "Apr 18", New: 7, Existing: 7 },
-  { day: "Apr 19", New: 6, Existing: 7 },
+  { day: "Jul 1", New: 6, Existing: 8 },
+  { day: "Jul 2", New: 7, Existing: 7 },
+  { day: "Jul 3", New: 5, Existing: 9 },
+  { day: "Jul 4", New: 8, Existing: 6 },
+  { day: "Jul 5", New: 4, Existing: 8 },
+  { day: "Jul 6", New: 7, Existing: 5 },
+  { day: "Jul 7", New: 8, Existing: 7 },
+  { day: "Jul 8", New: 6, Existing: 9 },
+  { day: "Jul 9", New: 9, Existing: 6 },
+  { day: "Jul 10", New: 5, Existing: 8 },
+  { day: "Jul 11", New: 7, Existing: 7 },
+  { day: "Jul 12", New: 6, Existing: 8 },
+  { day: "Jul 13", New: 8, Existing: 5 },
+  { day: "Jul 14", New: 7, Existing: 9 },
 ];
 
 // Mock data for campaign bar chart
@@ -518,16 +507,8 @@ function Dashboard() {
   const [copilotInput, setCopilotInput] = useState("");
   const [copilotMessages, setCopilotMessages] = useState([
     {
-      sender: "user",
-      text: "Why is Acme Corp marked as Critical Risk?"
-    },
-    {
       sender: "ai",
-      text: "Acme Corp is currently at critical risk (Health Score: 32%) due to a **40% drop in product adoption** over the past 30 days and **2 unresolved critical API issues** blocking their engineers. Additionally, competitor *RelateGraph* was mentioned twice in support transcripts last week.",
-      confidence: "94%",
-      reasoning: "Correlated 6 support tickets, 14 API error logs, and sentiment analysis from 3 emails.",
-      citations: ["Slack thread: #acme-sync L45", "Support ticket #40921", "Call recording: CS Check-in (June 28)"],
-      graphNodes: ["Acme Corp (Customer)", "API Issue #202 (Node)", "RelateGraph (Competitor)"]
+      text: "I am RetainGraph's cognitive copilot. Ask me anything about this customer's graph, sentiment trends, or support interactions."
     }
   ]);
   const [comparisonMode, setComparisonMode] = useState(false);
@@ -550,11 +531,72 @@ function Dashboard() {
   const [realAccounts, setRealAccounts] = useState<any[]>([]);
   const [activeBrief, setActiveBrief] = useState<any>(null);
   const [isBriefLoading, setIsBriefLoading] = useState(false);
+  const [selectedTenantId, setSelectedTenantId] = useState("demo-tenant-123");
+  const [selectedAccountDetails, setSelectedAccountDetails] = useState<any>(null);
+  const [graphData, setGraphData] = useState<any>(null);
+  const [simulationNodes, setSimulationNodes] = useState<any[]>([]);
+  const [simulationLinks, setSimulationLinks] = useState<any[]>([]);
+  const [selectedNode, setSelectedNode] = useState<any>(null);
+  const [zoomScale, setZoomScale] = useState(1);
+  const [zoomTranslation, setZoomTranslation] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
 
   // Seeding correction modal state
   const [showCorrectionModal, setShowCorrectionModal] = useState(false);
   const [correctionTargetId, setCorrectionTargetId] = useState("");
   const [correctionReasonInput, setCorrectionReasonInput] = useState("");
+  const [insights, setInsights] = useState<any[]>([]);
+
+  // Developer Playground Handlers
+  const [ingestInput, setIngestInput] = useState("");
+  const [playgroundLogs, setPlaygroundLogs] = useState<string[]>([]);
+
+  const handleIngestPlayground = async () => {
+    if (!ingestInput.trim()) return;
+    try {
+      const res = await fetch(`http://localhost:3000/api/interactions/ingest`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "x-api-key": "demo-key-456",
+          "x-tenant-id": "demo-tenant-123"
+        },
+        body: JSON.stringify({ payload: ingestInput })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPlaygroundLogs(prev => [`[Ingest Success] ID: ${data.interaction?.id || "Success"}`, ...prev]);
+        setIngestInput("");
+      } else {
+        setPlaygroundLogs(prev => [`[Ingest Error] Status: ${res.status}`, ...prev]);
+      }
+    } catch (e) {
+      setPlaygroundLogs(prev => [`[Ingest Connection Failed]`, ...prev]);
+    }
+  };
+
+  const handleTriggerHealthAudit = async () => {
+    try {
+      const res = await fetch(`http://localhost:3000/api/v1/accounts/${selectedTenantId}/health`);
+      if (res.ok) {
+        const data = await res.json();
+        setPlaygroundLogs(prev => [`[Audit Success] Calculated Churn Risk: ${data.riskScore}`, ...prev]);
+        const ovRes = await fetch(`http://localhost:3000/api/v1/dashboard/overview?tenantId=${selectedTenantId}`);
+        if (ovRes.ok) {
+          setOverviewData(await ovRes.json());
+        }
+        const insRes = await fetch(`http://localhost:3000/api/v1/insights`);
+        if (insRes.ok) {
+          setInsights(await insRes.json());
+        }
+      } else {
+        setPlaygroundLogs(prev => [`[Audit Error] Status: ${res.status}`, ...prev]);
+      }
+    } catch (e) {
+      setPlaygroundLogs(prev => [`[Audit Connection Failed]`, ...prev]);
+    }
+  };
 
   const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3000/api/v1";
 
@@ -563,7 +605,7 @@ function Dashboard() {
     async function loadInitialData() {
       setLoading(true);
       try {
-        const ovRes = await fetch(`${API_BASE}/dashboard/overview?tenantId=demo-tenant-123`);
+        const ovRes = await fetch(`${API_BASE}/dashboard/overview?tenantId=${selectedTenantId}`);
         if (ovRes.ok) {
           const data = await ovRes.json();
           setOverviewData(data);
@@ -573,19 +615,24 @@ function Dashboard() {
         if (accRes.ok) {
           const list = await accRes.json();
           setRealAccounts(list.map((a: any) => ({
-            name: a.name || a.id,
-            logo: a.name ? a.name.substring(0, 2).toUpperCase() : "AC",
-            owner: a.csOwner || "Unassigned",
-            health: a.healthChecks?.[0] ? (100 - a.healthChecks[0].riskScore) : 50,
-            risk: a.healthChecks?.[0] ? (a.healthChecks[0].riskScore > 70 ? "Critical" : a.healthChecks[0].riskScore > 40 ? "Needs Attention" : "Low") : "Low",
-            arr: a.arrValue || "$120,000",
-            renewal: a.renewalDate ? new Date(a.renewalDate).toLocaleDateString() : "2026-12-15",
-            lastInt: "Recent",
-            tickets: a.clientInteractions?.length || 0,
-            insights: a.healthChecks?.[0] ? JSON.parse(a.healthChecks[0].rootCauses || "[]").length : 0,
+            id: a.id,
+            name: a.company || a.id,
+            logo: a.logo || "AC",
+            owner: a.owner || "Unassigned",
+            health: a.healthScore ?? 50,
+            risk: a.risk === "HIGH" ? "Critical" : a.risk === "MEDIUM" ? "Needs Attention" : "Low",
+            arr: typeof a.arr === "number" ? `$${a.arr.toLocaleString()}` : (a.arr || "$120,000"),
+            renewal: a.renewalDate || "Oct 12, 2026",
+            lastInt: a.lastInteraction ? new Date(a.lastInteraction).toLocaleDateString() : "Recent",
+            tickets: a.activeInsights || 0,
+            insights: a.activeInsights || 0,
             graphStatus: "Synced",
             rawAccount: a
           })));
+        }
+        const insRes = await fetch(`${API_BASE}/insights`);
+        if (insRes.ok) {
+          setInsights(await insRes.json());
         }
       } catch (e) {
         console.error("Failed to load backend dashboard API data:", e);
@@ -594,13 +641,171 @@ function Dashboard() {
       }
     }
     loadInitialData();
-  }, [activeView]);
+  }, [activeView, selectedTenantId]);
+
+  // Fetch details for the selected tenant
+  useEffect(() => {
+    async function loadDetails() {
+      if (activeView !== "Detail" || !selectedTenantId) return;
+      try {
+        const res = await fetch(`${API_BASE}/accounts/${selectedTenantId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setSelectedAccountDetails(data);
+        }
+      } catch (e) {
+        console.error("Failed to fetch account details:", e);
+      }
+    }
+    loadDetails();
+  }, [selectedTenantId, activeView, API_BASE]);
+
+  // Fetch graph data for the selected tenant
+  useEffect(() => {
+    async function loadGraph() {
+      if ((activeView !== "Graph" && activeView !== "Copilot") || !selectedTenantId) return;
+      try {
+        const res = await fetch(`${API_BASE}/accounts/${selectedTenantId}/graph`);
+        if (res.ok) {
+          const data = await res.json();
+          setGraphData(data);
+          // Auto-select the first node (customer node) initially
+          if (data && data.nodes && data.nodes.length > 0) {
+            setSelectedNode(data.nodes[0]);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to fetch graph data:", e);
+      }
+    }
+    loadGraph();
+  }, [selectedTenantId, activeView, API_BASE]);
+
+  // Fetch pre-call briefing data
+  useEffect(() => {
+    async function loadBrief() {
+      if (activeView !== "Briefs" || !selectedTenantId) return;
+      console.log("[Dashboard] Loading brief for tenant ID:", selectedTenantId);
+      setActiveBrief(null); // Clear stale brief
+      try {
+        const res = await fetch(`${API_BASE}/accounts/${selectedTenantId}/brief`);
+        if (res.ok) {
+          const data = await res.json();
+          console.log("[Dashboard] Loaded brief details:", data);
+          setActiveBrief(data);
+        } else {
+          console.error("[Dashboard] Failed to load brief. Status:", res.status);
+        }
+      } catch (e) {
+        console.error("Failed to fetch pre-call brief:", e);
+      }
+    }
+    loadBrief();
+  }, [selectedTenantId, activeView, API_BASE]);
+  // Reset Copilot chat history on tenant switch
+  useEffect(() => {
+    const activeName = realAccounts.find(a => a.id === selectedTenantId)?.name || selectedCompany;
+    setCopilotMessages([
+      {
+        sender: "ai",
+        text: `I am RetainGraph's cognitive copilot. Ask me anything about ${activeName}'s graph database relationships, sentiment history, or active churn warning alerts.`
+      }
+    ]);
+  }, [selectedTenantId, realAccounts]);
+  const simulationRef = React.useRef<any>(null);
+  const [draggedNode, setDraggedNode] = useState<any>(null);
+
+  // Run D3 force simulation when graphData, filters, or search updates
+  useEffect(() => {
+    if (!graphData || !graphData.nodes || graphData.nodes.length === 0) {
+      setSimulationNodes([]);
+      setSimulationLinks([]);
+      return;
+    }
+
+    let nodes = graphData.nodes.map((n: any) => ({ ...n }));
+    
+    if (graphFilterType !== "all") {
+      nodes = nodes.filter((n: any) => {
+        const typeLower = (n.type || "").toLowerCase();
+        const labelLower = (n.label || "").toLowerCase();
+
+        if (graphFilterType === "Customer") {
+          return typeLower === "customer" || 
+                 labelLower === selectedCompany.toLowerCase() ||
+                 labelLower.includes("corp") || 
+                 labelLower.includes("company") || 
+                 labelLower.includes("client");
+        }
+        if (graphFilterType === "Competitor") {
+          return typeLower.includes("competit") || 
+                 labelLower === "relategraph" ||
+                 labelLower.includes("competitor");
+        }
+        if (graphFilterType === "Ticket") {
+          return typeLower.includes("ticket") || 
+                 typeLower.includes("support") || 
+                 typeLower.includes("issue") || 
+                 labelLower.includes("ticket") || 
+                 labelLower.includes("issue") ||
+                 labelLower.includes("bug") ||
+                 labelLower.includes("timeout") ||
+                 labelLower.includes("latency") ||
+                 labelLower.includes("crash");
+        }
+        return true;
+      });
+    }
+
+    if (graphSearchQuery.trim()) {
+      const q = graphSearchQuery.toLowerCase();
+      nodes = nodes.filter((n: any) => n.label.toLowerCase().includes(q) || (n.type && n.type.toLowerCase().includes(q)));
+    }
+
+    const nodeIds = new Set(nodes.map((n: any) => n.id));
+    const links = graphData.edges
+      .filter((e: any) => nodeIds.has(e.source) && nodeIds.has(e.target))
+      .map((e: any) => ({
+        ...e,
+        source: e.source,
+        target: e.target
+      }));
+
+    const width = 800;
+    const height = 500;
+
+    if (nodes.length > 0) {
+      nodes[0].fx = width / 2;
+      nodes[0].fy = height / 2;
+    }
+
+    const simulation = d3.forceSimulation(nodes)
+      .force("link", d3.forceLink(links).id((d: any) => d.id).distance(130))
+      .force("charge", d3.forceManyBody().strength(-350))
+      .force("center", d3.forceCenter(width / 2, height / 2))
+      .force("x", d3.forceX(width / 2).strength(0.08))
+      .force("y", d3.forceY(height / 2).strength(0.08))
+      .force("collision", d3.forceCollide().radius(45));
+
+    simulationRef.current = simulation;
+
+    simulation.on("tick", () => {
+      setSimulationNodes([...nodes]);
+      setSimulationLinks([...links]);
+    });
+
+    return () => {
+      simulation.stop();
+    };
+  }, [graphData, graphFilterType, graphSearchQuery]);
 
   // Fetch Pre-call Brief on demand
   const handleGenerateBrief = async (tenantId: string) => {
     setIsBriefLoading(true);
     try {
-      const briefRes = await fetch(`${API_BASE}/accounts/${tenantId}/brief`);
+      const briefRes = await fetch(`${API_BASE}/accounts/${tenantId}/brief`, {
+        method: "POST"
+      });
       if (briefRes.ok) {
         const data = await briefRes.json();
         setActiveBrief(data);
@@ -621,10 +826,10 @@ function Dashboard() {
     setCopilotInput("");
 
     try {
-      const response = await fetch(`${API_BASE}/accounts/demo-tenant-123/chat`, {
+      const response = await fetch(`${API_BASE}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: queryText })
+        body: JSON.stringify({ question: queryText, tenantId: "demo-tenant-123" })
       });
       if (response.ok) {
         const answer = await response.json();
@@ -648,20 +853,19 @@ function Dashboard() {
   // Dismiss / Correction submission
   const handleSubmitCorrection = async () => {
     if (!correctionReasonInput.trim()) return;
+    setShowCorrectionModal(false);
+    const reason = correctionReasonInput;
+    setCorrectionReasonInput("");
     try {
       const res = await fetch(`${API_BASE}/health/${correctionTargetId}/correct`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ correctionReason: correctionReasonInput })
+        body: JSON.stringify({ correctionReason: reason })
       });
-      if (res.ok) {
-        setShowCorrectionModal(false);
-        setCorrectionReasonInput("");
-        // Reload dashboard overview
-        const ovRes = await fetch(`${API_BASE}/dashboard/overview?tenantId=demo-tenant-123`);
-        if (ovRes.ok) {
-          setOverviewData(await ovRes.json());
-        }
+      // Reload dashboard overview
+      const ovRes = await fetch(`${API_BASE}/dashboard/overview?tenantId=demo-tenant-123`);
+      if (ovRes.ok) {
+        setOverviewData(await ovRes.json());
       }
     } catch (e) {
       console.error("Failed to log procedural memory correction:", e);
@@ -811,8 +1015,25 @@ function Dashboard() {
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* TOP BAR */}
         <header className="h-14 border-b border-[#1a1a1f] flex items-center justify-between px-8 bg-[#070708]/80 backdrop-blur-md sticky top-0 z-30 shrink-0">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <span className="font-semibold text-white tracking-wide">{activeView}</span>
+            {realAccounts.length > 0 && (
+              <select
+                value={selectedTenantId}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSelectedTenantId(val);
+                  setSelectedCompany(realAccounts.find(a => a.id === val)?.name || val);
+                }}
+                className="bg-[#121216]/50 border border-[#1a1a1f] text-xs text-white rounded px-2.5 py-1 outline-none focus:border-primary/50 font-semibold"
+              >
+                {realAccounts.map((acc) => (
+                  <option key={acc.id} value={acc.id}>
+                    {acc.name}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div className="flex items-center gap-4">
@@ -942,9 +1163,9 @@ function Dashboard() {
 
                   <div className="h-[260px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                      <ReBarChart data={salesData} barGap={0} barCategoryGap="40%">
+                      <ReBarChart data={overviewData?.healthHistory || salesData} barGap={0} barCategoryGap="40%">
                         <ReXAxis dataKey="day" stroke="#454545" fontSize={10} tickLine={false} axisLine={false} interval="preserveStartEnd" dy={4} />
-                        <ReYAxis stroke="#454545" fontSize={10} tickLine={false} axisLine={false} domain={[0, 20]} />
+                        <ReYAxis stroke="#454545" fontSize={10} tickLine={false} axisLine={false} domain={[0, 100]} />
                         <Bar dataKey="Existing" stackId="a" fill="#303036" shape={<SegmentedBar />} />
                         <Bar dataKey="New" stackId="a" fill="#ffffff" shape={<SegmentedBar />} />
                       </ReBarChart>
@@ -964,10 +1185,10 @@ function Dashboard() {
 
                   <div className="h-[260px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                      <ReBarChart data={campaignData} barSize={6}>
+                      <ReBarChart data={overviewData?.campaignData || campaignData} barSize={6}>
                         <ReXAxis dataKey="name" stroke="#454545" fontSize={10} tickLine={false} axisLine={false} />
                         <Bar dataKey="val">
-                          {campaignData.map((entry, index) => (
+                          {(overviewData?.campaignData || campaignData).map((entry: any, index: number) => (
                             <Cell key={`cell-${index}`} fill={entry.highlight ? "#ffffff" : "#202025"} />
                           ))}
                         </Bar>
@@ -991,10 +1212,10 @@ function Dashboard() {
 
                   <FunnelChart
                     data={[
-                      { label: "Product views", value: 72000, displayValue: "72K" },
-                      { label: "Add to cart", value: 38200, displayValue: "38.2K" },
-                      { label: "Checkout", value: 16800, displayValue: "16.8K" },
-                      { label: "Purchase", value: 5600, displayValue: "5.6K" },
+                      { label: "Interactions Ingested", value: overviewData?.statistics ? overviewData.statistics.interactionsToday * 10 : 720, displayValue: overviewData?.statistics ? `${overviewData.statistics.interactionsToday * 10}` : "720" },
+                      { label: "Knowledge Graph Nodes", value: overviewData?.statistics ? overviewData.statistics.graphNodes : 2842, displayValue: overviewData?.statistics ? `${overviewData.statistics.graphNodes}` : "2.8K" },
+                      { label: "Extracted Entities", value: overviewData?.statistics ? overviewData.statistics.entitiesExtracted : 1136, displayValue: overviewData?.statistics ? `${overviewData.statistics.entitiesExtracted}` : "1.1K" },
+                      { label: "Health Assessments", value: overviewData?.portfolio ? overviewData.portfolio.totalAccounts : 6, displayValue: overviewData?.portfolio ? `${overviewData.portfolio.totalAccounts}` : "6" },
                     ]}
                     layers={3}
                     edges="curved"
@@ -1006,65 +1227,70 @@ function Dashboard() {
                   <CornerBrackets />
                   <div className="flex justify-between items-start">
                     <div className="space-y-1">
-                      <div className="text-2xl font-bold tracking-tight text-white">1,842</div>
-                      <div className="text-xs text-muted-foreground">Total orders in last 30 days</div>
+                      <div className="text-2xl font-bold tracking-tight text-white">
+                        {overviewData?.statistics ? overviewData.statistics.interactionsToday * 4 : 242}
+                      </div>
+                      <div className="text-xs text-muted-foreground">Total Ingested Interactions</div>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-5 gap-6 items-center">
-                    <div className="md:col-span-2 flex justify-center relative">
-                      <PieChart
-                        data={[
-                          { label: "Organic search", value: 698, color: "url(#diagonalHatch)" },
-                          { label: "Direct", value: 516, color: "url(#horizontalHatch)" },
-                          { label: "Referral", value: 276, color: "url(#verticalHatch)" },
-                          { label: "Paid social", value: 221, color: "url(#gridHatch)" },
-                          { label: "Others", value: 131, color: "#17171d" },
-                        ]}
-                        size={160}
-                      >
-                        {[...Array(5)].map((_, idx) => (
-                          <PieSlice
-                            key={idx}
-                            index={idx}
-                            data={[
-                              { label: "Organic search", value: 698, color: "url(#diagonalHatch)" },
-                              { label: "Direct", value: 516, color: "url(#horizontalHatch)" },
-                              { label: "Referral", value: 276, color: "url(#verticalHatch)" },
-                              { label: "Paid social", value: 221, color: "url(#gridHatch)" },
-                              { label: "Others", value: 131, color: "#17171d" },
-                            ]}
-                            innerRadius={0}
-                          />
-                        ))}
-                      </PieChart>
-                    </div>
+                    {(() => {
+                      const bd = overviewData?.statistics?.breakdown || { emails: 98, tickets: 72, meetings: 30, other: 42, total: 242 };
+                      const totalInteractions = bd.total || 242;
+                      const pieData = [
+                        { label: "Email Syncs", value: bd.emails || 1, color: "url(#diagonalHatch)" },
+                        { label: "Zendesk Tickets", value: bd.tickets || 1, color: "url(#horizontalHatch)" },
+                        { label: "Slack Activity", value: bd.other || 1, color: "url(#verticalHatch)" },
+                        { label: "Meeting Audits", value: bd.meetings || 1, color: "url(#gridHatch)" },
+                      ];
+                      
+                      const getPct = (val: number) => {
+                        return totalInteractions > 0 ? `${((val / totalInteractions) * 100).toFixed(1)}%` : "0.0%";
+                      };
 
-                    <div className="md:col-span-3 space-y-3.5 pr-2">
-                      {[
-                        { label: "Organic search", value: "698", pct: "37.9%", color: "url(#diagonalHatch)", isPattern: true },
-                        { label: "Direct", value: "516", pct: "28.0%", color: "url(#horizontalHatch)", isPattern: true },
-                        { label: "Referral", value: "276", pct: "15.0%", color: "url(#verticalHatch)", isPattern: true },
-                        { label: "Paid social", value: "221", pct: "12.0%", color: "url(#gridHatch)", isPattern: true },
-                        { label: "Others", value: "131", pct: "7.1%", color: "#17171d", isPattern: false },
-                      ].map((item, idx) => (
-                        <div key={idx} className="flex items-center justify-between border-b border-[#121216] pb-2">
-                          <div className="flex items-center gap-2">
-                            <span 
-                              className="w-3.5 h-3.5 border border-[#1a1a1f] shrink-0" 
-                              style={{ 
-                                background: item.color 
-                              }}
-                            />
-                            <span className="text-xs font-semibold text-white">{item.label}</span>
+                      return (
+                        <>
+                          <div className="md:col-span-2 flex justify-center relative">
+                            <PieChart data={pieData} size={160}>
+                              {pieData.map((_, idx) => (
+                                <PieSlice
+                                  key={idx}
+                                  index={idx}
+                                  data={pieData}
+                                  innerRadius={0}
+                                />
+                              ))}
+                            </PieChart>
                           </div>
-                          <div className="text-right flex items-center gap-4">
-                            <div className="text-xs text-muted-foreground">{item.pct}</div>
-                            <div className="text-xs font-bold text-white w-8 text-right">{item.value}</div>
+
+                          <div className="md:col-span-3 space-y-3.5 pr-2">
+                            {[
+                              { label: "Email Syncs", value: String(bd.emails), pct: getPct(bd.emails), color: "url(#diagonalHatch)", isPattern: true },
+                              { label: "Zendesk Tickets", value: String(bd.tickets), pct: getPct(bd.tickets), color: "url(#horizontalHatch)", isPattern: true },
+                              { label: "Slack Activity", value: String(bd.other), pct: getPct(bd.other), color: "url(#verticalHatch)", isPattern: true },
+                              { label: "Meeting Audits", value: String(bd.meetings), pct: getPct(bd.meetings), color: "url(#gridHatch)", isPattern: true },
+                            ].map((item, idx) => (
+                              <div key={idx} className="flex items-center justify-between border-b border-[#121216] pb-2">
+                                <div className="flex items-center gap-2">
+                                  <span 
+                                    className="w-3.5 h-3.5 border border-[#1a1a1f] shrink-0" 
+                                    style={{ 
+                                      background: item.color 
+                                    }}
+                                  />
+                                  <span className="text-xs font-semibold text-white">{item.label}</span>
+                                </div>
+                                <div className="text-right flex items-center gap-4">
+                                  <div className="text-xs text-muted-foreground">{item.pct}</div>
+                                  <div className="text-xs font-bold text-white w-8 text-right">{item.value}</div>
+                                </div>
+                              </div>
+                            ))}
                           </div>
-                        </div>
-                      ))}
-                    </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
@@ -1076,13 +1302,13 @@ function Dashboard() {
                   <CornerBrackets />
                   <div className="text-xs text-muted-foreground font-semibold uppercase tracking-wider flex justify-between">
                     <span>Active CS Workload</span>
-                    <span>12 months</span>
+                    <span>Realtime</span>
                   </div>
                   <div className="space-y-3.5 pt-2">
                     {[
-                      { label: "Review Tickets", val: "41 tasks", pct: 75 },
-                      { label: "Renewals Due", val: "9 contracts", pct: 60 },
-                      { label: "Health Audits", val: "12 checks", pct: 40 },
+                      { label: "Active Alerts", val: `${overviewData?.portfolio ? (overviewData.portfolio.criticalAccounts + overviewData.portfolio.warningAccounts) : 8} events`, pct: overviewData?.portfolio ? Math.min(100, Math.round((overviewData.portfolio.criticalAccounts + overviewData.portfolio.warningAccounts) * 12.5)) : 75 },
+                      { label: "Evaluated Tenants", val: `${overviewData?.portfolio?.totalAccounts || 6} accounts`, pct: overviewData?.portfolio ? Math.min(100, Math.round(overviewData.portfolio.totalAccounts * 15)) : 60 },
+                      { label: "Graph Sync Status", val: overviewData?.workers?.ingestion?.status === "running" ? "Online" : "Syncing", pct: overviewData?.workers?.ingestion?.status === "running" ? 100 : 75 },
                     ].map((item, idx) => (
                       <div key={idx} className="space-y-1.5">
                         <div className="flex justify-between text-xs font-semibold">
@@ -1127,7 +1353,7 @@ function Dashboard() {
                     <div className="space-y-1">
                       <div className="text-sm font-semibold text-white">4 CS Managers</div>
                       <p className="text-[11px] text-muted-foreground max-w-[160px] mx-auto">
-                        Managing 142 enterprise customers
+                        Managing {overviewData?.portfolio?.totalAccounts || 6} active tenants
                       </p>
                     </div>
                   </div>
@@ -1209,7 +1435,7 @@ function Dashboard() {
                   <div className="space-y-2 pt-1">
                     {[
                       { title: "Run Groq Prompt", desc: "Query Graph Copilot." },
-                      { title: "Review at Risk", desc: "8 critical alerts open." },
+                      { title: "Review at Risk", desc: overviewData?.portfolio ? `${overviewData.portfolio.criticalAccounts + overviewData.portfolio.warningAccounts} active alerts open.` : "8 critical alerts open." },
                       { title: "Tenant configuration", desc: "Manage Cognee pipelines." },
                     ].map((action, idx) => (
                       <button
@@ -1244,16 +1470,16 @@ function Dashboard() {
                 ) : overviewData?.recommendations?.length > 0 ? (
                   <div className="space-y-3">
                     {overviewData.recommendations.map((rec: any, idx: number) => (
-                      <div key={idx} className="bg-[#121216]/50 p-4 border border-[#1a1a1f] flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative">
+                       <div key={idx} className="bg-[#121216]/50 p-4 border border-[#1a1a1f] flex flex-col md:flex-row justify-between items-start gap-4 relative">
                         <CornerBrackets />
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="px-2 py-0.5 bg-rose-500/10 text-rose-500 border border-rose-500/20 text-[9px] font-bold rounded">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="px-2 py-0.5 bg-rose-500/10 text-rose-500 border border-rose-500/20 text-[9px] font-bold rounded whitespace-nowrap">
                               {rec.impact || "High"} Impact
                             </span>
                             <span className="text-xs font-bold text-white">{rec.title}</span>
                           </div>
-                          <p className="text-xs text-muted-foreground">{rec.reason}</p>
+                          <p className="text-xs text-muted-foreground leading-relaxed pt-0.5">{rec.reason}</p>
                         </div>
                         <div className="flex gap-2 shrink-0">
                           <button
@@ -1337,6 +1563,7 @@ function Dashboard() {
                             <button 
                               onClick={() => {
                                 setSelectedCompany(acc.name);
+                                setSelectedTenantId(acc.id);
                                 setActiveView("Detail");
                               }}
                               className="hover:underline text-left"
@@ -1410,7 +1637,7 @@ function Dashboard() {
                   <div>
                     <h1 className="text-3xl font-extrabold text-white tracking-tight">{selectedCompany}</h1>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Account Owner: Sarah Jenkins • ARR: $145,000 • Renewal Date: Oct 12, 2026
+                      Account Owner: {selectedAccountDetails?.summary?.owner || "Sarah Jenkins"} • ARR: {selectedAccountDetails?.summary?.arr ? `$${selectedAccountDetails.summary.arr.toLocaleString()}` : "$145,000"} • Customer Since: {selectedAccountDetails?.summary?.customerSince || "2023"}
                     </p>
                   </div>
                 </div>
@@ -1437,7 +1664,9 @@ function Dashboard() {
                   <div className="space-y-3.5">
                     <div className="bg-[#121216]/50 p-3 border border-[#1a1a1f]">
                       <div className="text-[10px] text-rose-400 uppercase font-bold">Primary churn risk</div>
-                      <p className="text-xs text-white mt-1">40% adoption drop in core modules and key contact transition last month.</p>
+                      <p className="text-xs text-white mt-1">
+                        {selectedAccountDetails?.insights?.[0]?.summary || "40% adoption drop in core modules and key contact transition last month."}
+                      </p>
                     </div>
                     <div className="bg-[#121216]/50 p-3 border border-[#1a1a1f]">
                       <div className="text-[10px] text-emerald-400 uppercase font-bold">Growth opportunity</div>
@@ -1445,7 +1674,9 @@ function Dashboard() {
                     </div>
                     <div className="flex justify-between items-center text-xs pt-2">
                       <span className="text-muted-foreground">AI Confidence Score</span>
-                      <span className="font-bold text-white bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded">94%</span>
+                      <span className="font-bold text-white bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded">
+                        {selectedAccountDetails?.summary?.confidence ? `${selectedAccountDetails.summary.confidence.toUpperCase()}` : "94%"}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -1456,9 +1687,9 @@ function Dashboard() {
                   <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Adoption Health radar</div>
                   <div className="space-y-2.5">
                     {[
-                      { label: "Product usage", score: 85, color: "bg-emerald-500" },
-                      { label: "Support history", score: 40, color: "bg-rose-500" },
-                      { label: "Sentiment Index", score: 55, color: "bg-amber-500" },
+                      { label: "Product usage", score: selectedAccountDetails?.summary?.healthScore || 85, color: "bg-emerald-500" },
+                      { label: "Support history", score: selectedAccountDetails?.summary?.healthScore ? Math.round(selectedAccountDetails.summary.healthScore * 0.9) : 40, color: "bg-rose-500" },
+                      { label: "Sentiment Index", score: selectedAccountDetails?.summary?.overallSentiment === "Positive" ? 80 : 30, color: "bg-amber-500" },
                       { label: "Contract Renewal", score: 90, color: "bg-emerald-500" },
                     ].map((radar, i) => (
                       <div key={i} className="space-y-1">
@@ -1479,11 +1710,11 @@ function Dashboard() {
                   <CornerBrackets />
                   <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Key Stakeholders</div>
                   <div className="space-y-2.5">
-                    {[
+                    {(selectedAccountDetails?.stakeholders || [
                       { name: "Johnathan Wick", role: "Decision Maker (CTO)", sentiment: "Positive", strength: 80 },
                       { name: "Helen Cho", role: "Technical Sponsor", sentiment: "Neutral", strength: 65 },
                       { name: "Marcus Brody", role: "CS Champion", sentiment: "Negative", strength: 30 },
-                    ].map((stake, i) => (
+                    ]).map((stake: any, i: number) => (
                       <div key={i} className="flex justify-between items-center border-b border-[#121216] pb-2">
                         <div>
                           <div className="text-xs font-bold text-white">{stake.name}</div>
@@ -1497,7 +1728,7 @@ function Dashboard() {
                           }`}>
                             {stake.sentiment}
                           </span>
-                          <div className="text-[9px] text-muted-foreground mt-0.5">Strength: {stake.strength}%</div>
+                          <div className="text-[9px] text-muted-foreground mt-0.5">Strength: {stake.strength || 75}%</div>
                         </div>
                       </div>
                     ))}
@@ -1510,22 +1741,22 @@ function Dashboard() {
                 <CornerBrackets />
                 <div className="text-sm font-semibold text-white">AI Health & Interaction Timeline</div>
                 <div className="relative border-l border-[#1a1a1f] pl-6 ml-4 space-y-6">
-                  {[
+                  {(selectedAccountDetails?.timeline || [
                     { type: "Meeting Transcript", title: "CS Executive Alignment Call", desc: "Pricing and expansion concerns raised by Wick. Mentioned budget freezes in their tech org.", date: "Today, 10:14 AM", sentiment: "Negative", source: "Zoom processed" },
                     { type: "Support Ticket", title: "API Endpoint Timeout Error #40921", desc: "Database lock contention triggered 504 gateway response on staging. Handed over to engineer team.", date: "Yesterday, 3:42 PM", sentiment: "Critical", source: "Zendesk sync" },
                     { type: "AI Insight Event", title: "Competitor mention detected", desc: "Copilot extracted relation: Wick mentioned 'RelateGraph pricing model seems more elastic' during conversation.", date: "June 28, 2026", sentiment: "Warning", source: "Cognitive extractor" },
-                  ].map((evt, i) => (
+                  ]).map((evt: any, i: number) => (
                     <div key={i} className="relative">
                       {/* Timeline dot */}
                       <span className="absolute -left-[31px] top-1 w-2.5 h-2.5 rounded-full bg-white border-4 border-[#070708]" />
                       <div className="space-y-1">
                         <div className="flex justify-between items-center text-xs">
-                          <span className="font-semibold text-white">{evt.type} — {evt.title}</span>
-                          <span className="text-[10px] text-muted-foreground">{evt.date}</span>
+                          <span className="font-semibold text-white">{evt.type || "Interaction"} — {evt.title || "Log Entry"}</span>
+                          <span className="text-[10px] text-muted-foreground">{evt.timestamp ? new Date(evt.timestamp).toLocaleString() : (evt.date || "Recent")}</span>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1 max-w-2xl">{evt.desc}</p>
+                        <p className="text-xs text-muted-foreground mt-1 max-w-2xl">{evt.summary || evt.desc}</p>
                         <div className="flex items-center gap-3 text-[10px] text-muted-foreground pt-1.5">
-                          <span className="px-2 py-0.5 bg-neutral-900 border border-[#121216] rounded-full">{evt.source}</span>
+                          <span className="px-2 py-0.5 bg-neutral-900 border border-[#121216] rounded-full">{evt.source || "System Log"}</span>
                           <span className={`font-bold ${
                             evt.sentiment === "Negative" || evt.sentiment === "Critical" ? "text-rose-400" : "text-amber-400"
                           }`}>
@@ -1632,12 +1863,12 @@ function Dashboard() {
                       type="text"
                       value={copilotInput}
                       onChange={(e) => setCopilotInput(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
+                      onKeyDown={(e) => e.key === "Enter" && handleSendCopilotQuery(copilotInput)}
                       placeholder="Ask copilot about customer health, support ticket logs, or graph context..."
                       className="flex-1 bg-secondary/20 border border-[#1a1a1f] rounded-lg px-3 py-2 text-xs outline-none focus:border-primary/50 text-white"
                     />
                     <button 
-                      onClick={handleSendMessage}
+                      onClick={() => handleSendCopilotQuery(copilotInput)}
                       className="px-4 py-2 bg-white text-black hover:bg-neutral-200 font-semibold rounded-lg text-xs transition-colors shrink-0"
                     >
                       Send Query
@@ -1646,33 +1877,55 @@ function Dashboard() {
                 </div>
 
                 {/* Sidebar context panel */}
-                <div className="bg-card/45 border border-[#1a1a1f] rounded-none p-5 relative space-y-4">
-                  <CornerBrackets />
-                  <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Retrieved Context</div>
-                  <div className="space-y-3 text-xs">
-                    <div className="p-3 bg-[#121216]/50 border border-[#1a1a1f] rounded space-y-1">
-                      <div className="text-[10px] text-neutral-400 font-bold uppercase">Graph Entities Used</div>
-                      <div className="text-white text-[11px] font-mono">
-                        - Customer: Acme Corp<br />
-                        - CTO: Johnathan Wick<br />
-                        - Competitor: RelateGraph
+                {(() => {
+                  const lastAiMsg = [...copilotMessages].reverse().find(m => m.sender === "ai");
+                  const activeName = realAccounts.find(a => a.id === selectedTenantId)?.name || selectedCompany || "Acme Corp";
+                  const graphNodesUsed = lastAiMsg?.graphNodes || [
+                    `Customer: ${activeName}`,
+                    ...((activeBrief?.keyStakeholders && activeBrief.keyStakeholders.length > 0)
+                      ? activeBrief.keyStakeholders.map((s: any) => `${s.role || "Stakeholder"}: ${s.name}`)
+                      : ["Stakeholder: Johnathan Wick"])
+                  ];
+                  const linkedTimelines = lastAiMsg?.linkedTimelines || [
+                    ...((activeBrief?.commitments && activeBrief.commitments.length > 0)
+                      ? activeBrief.commitments
+                      : ["Zendesk interaction check", "Zoom Sync Call"])
+                  ];
+                  const accuracy = lastAiMsg?.confidence || (activeBrief ? `${Math.round(activeBrief.briefConfidence * 100)}%` : "94%");
+
+                  return (
+                    <div className="bg-card/45 border border-[#1a1a1f] rounded-none p-5 relative space-y-4">
+                      <CornerBrackets />
+                      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Retrieved Context</div>
+                      <div className="space-y-3 text-xs">
+                        <div className="p-3 bg-[#121216]/50 border border-[#1a1a1f] rounded space-y-1">
+                          <div className="text-[10px] text-neutral-400 font-bold uppercase">Graph Entities Used</div>
+                          <div className="text-white text-[11px] font-mono">
+                            {graphNodesUsed.map((node: string, idx: number) => (
+                              <div key={idx}>- {node}</div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="p-3 bg-[#121216]/50 border border-[#1a1a1f] rounded space-y-1">
+                          <div className="text-[10px] text-neutral-400 font-bold uppercase">Linked Timelines</div>
+                          <div className="text-white text-[11px]">
+                            {linkedTimelines.map((time: string, idx: number) => (
+                              <div key={idx}>- {time}</div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="p-3 bg-[#121216]/50 border border-[#1a1a1f] rounded space-y-1">
+                          <div className="text-[10px] text-neutral-400 font-bold uppercase">Cognitive Confidence</div>
+                          <div className="text-emerald-500 font-bold text-sm">
+                            {accuracy.includes("%") ? accuracy : `${accuracy}%`} ACCURACY
+                          </div>
+                        </div>
                       </div>
                     </div>
-
-                    <div className="p-3 bg-[#121216]/50 border border-[#1a1a1f] rounded space-y-1">
-                      <div className="text-[10px] text-neutral-400 font-bold uppercase">Linked Timelines</div>
-                      <div className="text-white text-[11px]">
-                        - Zoom Alignment Call (July 04)<br />
-                        - Zendesk support #40921 (July 03)
-                      </div>
-                    </div>
-
-                    <div className="p-3 bg-[#121216]/50 border border-[#1a1a1f] rounded space-y-1">
-                      <div className="text-[10px] text-neutral-400 font-bold uppercase">Cognitive Confidence</div>
-                      <div className="text-emerald-500 font-bold text-sm">96.4% ACCURACY</div>
-                    </div>
-                  </div>
-                </div>
+                  );
+                })()}
               </div>
             </div>
           )}
@@ -1688,7 +1941,33 @@ function Dashboard() {
                   <p className="text-xs text-muted-foreground">Interactive visualization of multi-dimensional CS relationships</p>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-center">
+                  <div className="flex border border-[#1a1a1f] bg-card rounded overflow-hidden mr-2">
+                    <button
+                      onClick={() => setZoomScale(s => Math.min(s * 1.2, 4))}
+                      className="px-2.5 py-1 text-xs text-white border-r border-[#1a1a1f] hover:bg-neutral-800"
+                      title="Zoom In"
+                    >
+                      ＋
+                    </button>
+                    <button
+                      onClick={() => setZoomScale(s => Math.max(s / 1.2, 0.3))}
+                      className="px-2.5 py-1 text-xs text-white border-r border-[#1a1a1f] hover:bg-neutral-800"
+                      title="Zoom Out"
+                    >
+                      －
+                    </button>
+                    <button
+                      onClick={() => {
+                        setZoomScale(1);
+                        setZoomTranslation({ x: 0, y: 0 });
+                      }}
+                      className="px-2.5 py-1 text-xs text-white hover:bg-neutral-800"
+                      title="Reset Zoom"
+                    >
+                      Reset
+                    </button>
+                  </div>
                   <select 
                     value={graphFilterType}
                     onChange={(e) => setGraphFilterType(e.target.value)}
@@ -1714,73 +1993,324 @@ function Dashboard() {
                 <CornerBrackets />
 
                 {/* Graph Visualization Canvas Simulator */}
-                <svg className="absolute inset-0 w-full h-full" xmlns="http://www.w3.org/2000/svg">
-                  {/* Nodes Connections Edges lines */}
-                  <line x1="200" y1="150" x2="350" y2="250" stroke="#1a1a1f" strokeWidth="2" />
-                  <line x1="350" y1="250" x2="500" y2="150" stroke="#1a1a1f" strokeWidth="2" />
-                  <line x1="350" y1="250" x2="350" y2="400" stroke="#1a1a1f" strokeWidth="2" strokeDasharray="4 4" />
-                  <line x1="500" y1="150" x2="650" y2="200" stroke="#1a1a1f" strokeWidth="2" />
-                  
-                  {/* Left Node: Competitor */}
-                  <circle cx="200" cy="150" r="18" fill="#301515" stroke="#ef4444" strokeWidth="2" />
-                  <text x="200" y="154" fill="#ef4444" fontSize="9" fontWeight="bold" textAnchor="middle">COMP</text>
-                  <text x="200" y="125" fill="#a3a3a3" fontSize="10" fontWeight="semibold" textAnchor="middle">RelateGraph</text>
+                {(() => {
+                  const rawNodes = graphData ? simulationNodes : [
+                    { id: "1", label: selectedCompany, type: "Customer", x: 400, y: 250 },
+                    { id: "2", label: "Johnathan Wick", type: "CTO", x: 500, y: 150 },
+                    { id: "3", label: "RelateGraph", type: "Competitor", x: 300, y: 150 },
+                    { id: "4", label: "API Timeout issue", type: "Support", x: 400, y: 380 },
+                  ];
 
-                  {/* Center Node: Customer */}
-                  <circle cx="350" cy="250" r="28" fill="#1b1b22" stroke="#ffffff" strokeWidth="2" />
-                  <text x="350" y="254" fill="#ffffff" fontSize="11" fontWeight="bold" textAnchor="middle">ACME</text>
-                  <text x="350" y="210" fill="#ffffff" fontSize="12" fontWeight="bold" textAnchor="middle">Acme Corp</text>
+                  const rawEdges = graphData ? simulationLinks : [
+                    { source: { id: "1", x: 400, y: 250 }, target: { id: "2", x: 500, y: 150 }, relation: "has_cto" },
+                    { source: { id: "1", x: 400, y: 250 }, target: { id: "3", x: 300, y: 150 }, relation: "competing_with" },
+                    { source: { id: "2", x: 500, y: 150 }, target: { id: "4", x: 400, y: 380 }, relation: "reported" },
+                  ];
 
-                  {/* Right Node: Stakeholder CTO */}
-                  <circle cx="500" cy="150" r="22" fill="#152815" stroke="#10b981" strokeWidth="2" />
-                  <text x="500" y="154" fill="#10b981" fontSize="10" fontWeight="bold" textAnchor="middle">CTO</text>
-                  <text x="500" y="120" fill="#a3a3a3" fontSize="10" fontWeight="semibold" textAnchor="middle">John Wick</text>
+                  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+                    if (isPanning) {
+                      setZoomTranslation({
+                        x: e.clientX - panStart.x,
+                        y: e.clientY - panStart.y
+                      });
+                    } else if (draggedNode) {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const x = (e.clientX - rect.left - zoomTranslation.x) / zoomScale;
+                      const y = (e.clientY - rect.top - zoomTranslation.y) / zoomScale;
+                      
+                      const node = rawNodes.find((n: any) => n.id === draggedNode.id);
+                      if (node) {
+                        node.fx = x;
+                        node.fy = y;
+                        if (simulationRef.current) {
+                          simulationRef.current.alpha(0.15).restart();
+                        }
+                      }
+                    }
+                  };
 
-                  {/* Bottom Node: Feature Request */}
-                  <circle cx="350" cy="400" r="20" fill="#2b2010" stroke="#f59e0b" strokeWidth="2" />
-                  <text x="350" y="404" fill="#f59e0b" fontSize="10" fontWeight="bold" textAnchor="middle">FEAT</text>
-                  <text x="350" y="435" fill="#a3a3a3" fontSize="10" fontWeight="semibold" textAnchor="middle">Feature X</text>
-                </svg>
+                  const handleWheel = (e: React.WheelEvent<SVGSVGElement>) => {
+                    const zoomFactor = 1.05;
+                    const nextScale = e.deltaY < 0 ? zoomScale * zoomFactor : zoomScale / zoomFactor;
+                    setZoomScale(Math.min(Math.max(nextScale, 0.3), 4));
+                  };
 
-                {/* Legend overlay */}
-                <div className="absolute bottom-5 left-5 bg-card/90 border border-[#1a1a1f] p-3 text-[10px] space-y-1.5">
-                  <div className="font-bold text-white uppercase tracking-wider mb-1">Graph Legend</div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-white" />
-                    <span className="text-muted-foreground">Customer accounts</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                    <span className="text-muted-foreground">Stakeholders</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-rose-500" />
-                    <span className="text-muted-foreground">Competitors</span>
-                  </div>
-                </div>
+                  const handleSvgMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
+                    const target = e.target as SVGElement;
+                    if (target.tagName === "svg" || target.tagName === "line") {
+                      setIsPanning(true);
+                      setPanStart({ x: e.clientX - zoomTranslation.x, y: e.clientY - zoomTranslation.y });
+                    }
+                  };
 
-                {/* Floating properties sidebar detail */}
-                <div className="absolute top-5 right-5 w-64 bg-card/90 border border-[#1a1a1f] p-4 text-xs space-y-3">
-                  <div className="font-bold text-white pb-1 border-b border-[#1a1a1f]">Node Inspector</div>
-                  <div className="space-y-2">
-                    <div>
-                      <span className="text-muted-foreground block text-[9px] uppercase font-bold">Selected Node</span>
-                      <span className="text-white font-bold text-sm">Acme Corp</span>
+                  const handleMouseUp = () => {
+                    if (isPanning) {
+                      setIsPanning(false);
+                    }
+                    if (draggedNode) {
+                      const node = rawNodes.find((n: any) => n.id === draggedNode.id);
+                      if (node && node.id !== rawNodes[0]?.id) {
+                        node.fx = null;
+                        node.fy = null;
+                      }
+                      setDraggedNode(null);
+                    }
+                  };
+
+                  return (
+                    <div className="absolute inset-0 w-full h-full">
+                      <svg 
+                        className="w-full h-full cursor-grab active:cursor-grabbing" 
+                        xmlns="http://www.w3.org/2000/svg"
+                        onMouseDown={handleSvgMouseDown}
+                        onMouseMove={handleMouseMove}
+                        onMouseUp={handleMouseUp}
+                        onMouseLeave={handleMouseUp}
+                        onWheel={handleWheel}
+                      >
+                        <g transform={`translate(${zoomTranslation.x}, ${zoomTranslation.y}) scale(${zoomScale})`}>
+                          {rawEdges.map((e: any, idx: number) => {
+                            const sourceX = typeof e.source === "object" ? e.source.x : rawNodes.find(n => n.id === e.source)?.x || 0;
+                            const sourceY = typeof e.source === "object" ? e.source.y : rawNodes.find(n => n.id === e.source)?.y || 0;
+                            const targetX = typeof e.target === "object" ? e.target.x : rawNodes.find(n => n.id === e.target)?.x || 0;
+                            const targetY = typeof e.target === "object" ? e.target.y : rawNodes.find(n => n.id === e.target)?.y || 0;
+                            
+                            return (
+                              <g key={idx}>
+                                <line
+                                  x1={sourceX}
+                                  y1={sourceY}
+                                  x2={targetX}
+                                  y2={targetY}
+                                  stroke="#3f3f46"
+                                  strokeWidth="1.5"
+                                />
+                                <rect
+                                  x={(sourceX + targetX) / 2 - 25}
+                                  y={(sourceY + targetY) / 2 - 8}
+                                  width="50"
+                                  height="11"
+                                  fill="#09090b"
+                                  rx="2"
+                                />
+                                <text
+                                  x={(sourceX + targetX) / 2}
+                                  y={(sourceY + targetY) / 2}
+                                  fill="#a1a1aa"
+                                  fontSize="7"
+                                  className="select-none pointer-events-none font-mono"
+                                  textAnchor="middle"
+                                >
+                                  {e.relation}
+                                </text>
+                              </g>
+                            );
+                          })}
+
+                          {rawNodes.map((n: any, idx: number) => {
+                            const typeLower = (n.type || "").toLowerCase();
+                            const labelLower = (n.label || "").toLowerCase();
+
+                            const isCustomer = typeLower === "customer" || 
+                                               labelLower === selectedCompany.toLowerCase() ||
+                                               labelLower.includes("corp") || 
+                                               labelLower.includes("company") || 
+                                               labelLower.includes("client");
+                                               
+                            const isCompetitor = typeLower.includes("competit") || 
+                                                 labelLower === "relategraph" ||
+                                                 labelLower.includes("competitor");
+
+                            const isStakeholder = ["cto", "sponsor", "stakeholder", "person", "csm"].includes(typeLower) || 
+                                                  ["johnathan wick", "helen cho", "john wick"].includes(labelLower) ||
+                                                  labelLower.includes("champion") ||
+                                                  labelLower.includes("cto");
+
+                            const isTicket = typeLower.includes("ticket") || 
+                                             typeLower.includes("support") || 
+                                             typeLower.includes("issue") || 
+                                             labelLower.includes("ticket") || 
+                                             labelLower.includes("issue") ||
+                                             labelLower.includes("bug") ||
+                                             labelLower.includes("timeout") ||
+                                             labelLower.includes("latency") ||
+                                             labelLower.includes("crash");
+
+                            const isProduct = typeLower.includes("product") || 
+                                              typeLower.includes("feature") || 
+                                              labelLower.includes("dashboard") ||
+                                              labelLower.includes("api") ||
+                                              labelLower.includes("feature") ||
+                                              labelLower.includes("integration");
+
+                            const isInteraction = labelLower.includes("email") ||
+                                                   labelLower.includes("call") ||
+                                                   labelLower.includes("qbr") ||
+                                                   labelLower.includes("meeting") ||
+                                                   labelLower.includes("discussion") ||
+                                                   labelLower.includes("sync");
+
+                            let color = "rgba(59, 130, 246, 0.15)";
+                            let stroke = "#3b82f6";
+                            let typeLabel = "ENT";
+
+                            if (isCustomer) {
+                              color = "rgba(255, 255, 255, 0.1)";
+                              stroke = "#ffffff";
+                              typeLabel = "CUST";
+                            } else if (isCompetitor) {
+                              color = "rgba(239, 68, 68, 0.15)";
+                              stroke = "#ef4444";
+                              typeLabel = "COMP";
+                            } else if (isStakeholder) {
+                              color = "rgba(16, 185, 129, 0.15)";
+                              stroke = "#10b981";
+                              typeLabel = "STAK";
+                            } else if (isTicket) {
+                              color = "rgba(245, 158, 11, 0.15)";
+                              stroke = "#f59e0b";
+                              typeLabel = "WARN";
+                            } else if (isProduct) {
+                              color = "rgba(139, 92, 246, 0.15)";
+                              stroke = "#8b5cf6";
+                              typeLabel = "PROD";
+                            } else if (isInteraction) {
+                              color = "rgba(20, 184, 166, 0.15)";
+                              stroke = "#14b8a6";
+                              typeLabel = "COMM";
+                            }
+
+                            const displayLabel = n.label && n.label.length > 18 
+                              ? n.label.substring(0, 15) + "..." 
+                              : (n.label || "");
+
+                            return (
+                              <g 
+                                key={idx} 
+                                className="group cursor-pointer select-none"
+                                onClick={() => setSelectedNode(n)}
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  setDraggedNode(n);
+                                  n.fx = n.x;
+                                  n.fy = n.y;
+                                }}
+                              >
+                                <circle
+                                  cx={n.x}
+                                  cy={n.y}
+                                  r={isCustomer ? 28 : 20}
+                                  fill={color}
+                                  stroke={stroke}
+                                  strokeWidth="2"
+                                />
+                                <text
+                                  x={n.x}
+                                  y={n.y + 3}
+                                  fill={stroke}
+                                  fontSize="9"
+                                  fontWeight="bold"
+                                  textAnchor="middle"
+                                >
+                                  {typeLabel}
+                                </text>
+                                
+                                <rect
+                                  x={n.x - 50}
+                                  y={n.y - (isCustomer ? 42 : 34)}
+                                  width="100"
+                                  height="10"
+                                  fill="#09090b"
+                                  fillOpacity="0.75"
+                                  rx="2"
+                                  className="group-hover:fill-opacity-95"
+                                />
+                                
+                                <text
+                                  x={n.x}
+                                  y={n.y - (isCustomer ? 34 : 26)}
+                                  fill="#ffffff"
+                                  fontSize="9"
+                                  fontWeight="semibold"
+                                  textAnchor="middle"
+                                >
+                                  {displayLabel}
+                                </text>
+                              </g>
+                            );
+                          })}
+                        </g>
+                      </svg>
+
+                      {/* Legend overlay */}
+                      <div className="absolute bottom-5 left-5 bg-card/90 border border-[#1a1a1f] p-3 text-[10px] space-y-1.5 z-10">
+                        <div className="font-bold text-white uppercase tracking-wider mb-1">Graph Legend</div>
+                        {Array.from(new Set(rawNodes.map((n: any) => n.type || "Entity"))).map((type: any, idx: number) => {
+                          const typeLower = String(type).toLowerCase();
+                          const isCustomer = typeLower === "customer";
+                          const isCompetitor = typeLower.includes("competit");
+                          const isStakeholder = ["cto", "sponsor", "stakeholder", "person", "csm"].includes(typeLower);
+                          const isTicket = typeLower.includes("ticket") || typeLower.includes("support") || typeLower.includes("issue");
+                          const isProduct = typeLower.includes("product") || typeLower.includes("feature");
+                          const isInteraction = ["email", "call", "qbr", "meeting", "discussion", "sync", "communication"].includes(typeLower);
+
+                          let colorClass = "bg-blue-500";
+                          let label = type;
+                          
+                          if (isCustomer) {
+                            colorClass = "bg-white";
+                            label = "Customer Accounts";
+                          } else if (isCompetitor) {
+                            colorClass = "bg-rose-500";
+                            label = "Competitors";
+                          } else if (isStakeholder) {
+                            colorClass = "bg-emerald-500";
+                            label = "Stakeholders";
+                          } else if (isTicket) {
+                            colorClass = "bg-amber-500";
+                            label = "Support / Tickets";
+                          } else if (isProduct) {
+                            colorClass = "bg-purple-500";
+                            label = "Product Features";
+                          } else if (isInteraction) {
+                            colorClass = "bg-teal-500";
+                            label = "Communications";
+                          }
+
+                          return (
+                            <div key={idx} className="flex items-center gap-2">
+                              <span className={`w-2 h-2 rounded-full ${colorClass}`} />
+                              <span className="text-muted-foreground capitalize">{label}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Floating properties sidebar detail */}
+                      <div className="absolute top-5 right-5 w-64 bg-card/90 border border-[#1a1a1f] p-4 text-xs space-y-3 z-10">
+                        <div className="font-bold text-white pb-1 border-b border-[#1a1a1f]">Node Inspector</div>
+                        <div className="space-y-2">
+                          <div>
+                            <span className="text-muted-foreground block text-[9px] uppercase font-bold">Selected Node</span>
+                            <span className="text-white font-bold text-sm">{selectedNode?.label || rawNodes[0]?.label || selectedCompany}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground block text-[9px] uppercase font-bold">Type</span>
+                            <span className="text-white">{selectedNode?.type || "Entity"}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground block text-[9px] uppercase font-bold">Degree Centrality</span>
+                            <span className="text-white font-mono">Connected via Cognee edges</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground block text-[9px] uppercase font-bold">Synchronized</span>
+                            <span className="text-emerald-500 font-semibold">Active Cognee Sync</span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <span className="text-muted-foreground block text-[9px] uppercase font-bold">Type</span>
-                      <span className="text-white">Customer Account</span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground block text-[9px] uppercase font-bold">Degree Centrality</span>
-                      <span className="text-white font-mono">14 connected edges</span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground block text-[9px] uppercase font-bold">Synchronized</span>
-                      <span className="text-emerald-500 font-semibold">Active Cognee Sync</span>
-                    </div>
-                  </div>
-                </div>
+                  );
+                })()}
               </div>
             </div>
           )}
@@ -1794,49 +2324,54 @@ function Dashboard() {
                 </div>
                 <div className="flex gap-2">
                   <span className="px-3 py-1 bg-rose-500/10 text-rose-500 border border-rose-500/20 text-xs font-semibold rounded-full">
-                    8 Critical Risk Events
+                    {insights.length} Active Events
                   </span>
                 </div>
               </div>
 
               {/* Insights list */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {[
-                  { cat: "Pricing Concerns", title: "Acme Corp: Pricing friction detected in transcripts", desc: "Wick mentioned 'budget cuts are forcing us to look at cheaper solutions like RelateGraph'.", priority: "High", conf: "94%" },
-                  { cat: "Product Adoption", title: "Globex Inc: Core feature adoption dropped by 20%", desc: "Significant drop in storage usage metrics. Users didn't trigger 'Graph build' in 14 days.", priority: "Medium", conf: "88%" },
-                  { cat: "Technical Issue", title: "Umbrella Corp: Critical support ticket escalation", desc: "Ticket #41920 escalated to L3 engineering regarding API Keys validation delays.", priority: "Critical", conf: "97%" },
-                  { cat: "Executive Stakeholder", title: "Initech Corp: Sponsor transition alert", desc: "CTO Johnathan Wick announced departure. New sponsor onboarding strategy recommended.", priority: "High", conf: "91%" },
-                ].map((ins, i) => (
-                  <div key={i} className="bg-card/45 border border-[#1a1a1f] rounded-none p-5 space-y-3.5 relative">
-                    <CornerBrackets />
-                    <div className="flex justify-between items-center border-b border-[#1a1a1f] pb-2">
-                      <span className="text-[10px] text-primary uppercase font-bold tracking-wider">{ins.cat}</span>
-                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
-                        ins.priority === "Critical" ? "bg-rose-500/10 text-rose-500" :
-                        ins.priority === "High" ? "bg-amber-500/10 text-amber-500" : "bg-neutral-600/10 text-muted-foreground"
-                      }`}>
-                        {ins.priority} Priority
-                      </span>
-                    </div>
+                {insights.map((ins, i) => {
+                  const priority = ins.severity === "critical" ? "Critical" : "High";
+                  const confDisplay = ins.confidence === "high" ? "94%" : ins.confidence === "medium" ? "85%" : ins.confidence;
 
-                    <div className="space-y-1">
-                      <h3 className="text-sm font-semibold text-white">{ins.title}</h3>
-                      <p className="text-xs text-muted-foreground mt-1">{ins.desc}</p>
-                    </div>
-
-                    <div className="flex justify-between items-center pt-2 text-[10px]">
-                      <div className="flex gap-2">
-                        <span className="text-muted-foreground">Confidence: <strong>{ins.conf}</strong></span>
+                  return (
+                    <div key={i} className="bg-card/45 border border-[#1a1a1f] rounded-none p-5 space-y-3.5 relative">
+                      <CornerBrackets />
+                      <div className="flex justify-between items-center border-b border-[#1a1a1f] pb-2">
+                        <span className="text-[10px] text-primary uppercase font-bold tracking-wider">{ins.category}</span>
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+                          priority === "Critical" ? "bg-rose-500/10 text-rose-500" :
+                          priority === "High" ? "bg-amber-500/10 text-amber-500" : "bg-neutral-600/10 text-muted-foreground"
+                        }`}>
+                          {priority} Priority
+                        </span>
                       </div>
-                      <button 
-                        onClick={() => alert("Insight resolved and synchronized to Cognee.")}
-                        className="px-2.5 py-1 bg-white text-black hover:bg-neutral-200 rounded font-semibold text-[10px]"
-                      >
-                        Resolve Insight
-                      </button>
+
+                      <div className="space-y-1">
+                        <h3 className="text-sm font-semibold text-white">{ins.summary}</h3>
+                        <p className="text-xs text-muted-foreground mt-1">{ins.recommendation}</p>
+                      </div>
+
+                      <div className="flex justify-between items-center pt-2 text-[10px]">
+                        <div className="flex gap-2">
+                          <span className="text-muted-foreground">Confidence: <strong>{confDisplay}</strong></span>
+                        </div>
+                        <button 
+                          onClick={() => {
+                            const recordId = ins.id.split("-cause-")[0];
+                            setCorrectionTargetId(recordId);
+                            setCorrectionReasonInput("");
+                            setShowCorrectionModal(true);
+                          }}
+                          className="px-2.5 py-1 bg-white text-black hover:bg-neutral-200 rounded font-semibold text-[10px]"
+                        >
+                          Resolve Insight
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -1859,17 +2394,19 @@ function Dashboard() {
                   </div>
                   <div className="h-[220px] w-full flex items-end justify-between gap-2 pt-2">
                     {[
-                      { name: "Q1", val: 40000 },
-                      { name: "Q2", val: 65000 },
-                      { name: "Q3", val: 92500 },
-                      { name: "Q4 (Est)", val: 120000 },
-                    ].map((exposure, i) => (
-                      <div key={i} className="flex-1 flex flex-col items-center gap-2">
-                        <span className="text-[10px] text-white font-bold">${exposure.val / 1000}K</span>
-                        <div className="w-full bg-[#1c1c22] rounded-none" style={{ height: `${(exposure.val / 120000) * 150}px` }} />
-                        <span className="text-[10px] text-muted-foreground font-semibold">{exposure.name}</span>
-                      </div>
-                    ))}
+                      { name: "Healthy ARR (Low)", val: realAccounts.filter(a => a.health < 40).reduce((sum, a) => sum + (a.rawAccount?.arr || 120000), 0) },
+                      { name: "Warning ARR (Med)", val: realAccounts.filter(a => a.health >= 40 && a.health < 70).reduce((sum, a) => sum + (a.rawAccount?.arr || 120000), 0) },
+                      { name: "Critical ARR (High)", val: realAccounts.filter(a => a.health >= 70).reduce((sum, a) => sum + (a.rawAccount?.arr || 120000), 0) },
+                    ].map((exposure, i) => {
+                      const maxVal = Math.max(1, realAccounts.reduce((sum, a) => sum + (a.rawAccount?.arr || 120000), 0));
+                      return (
+                        <div key={i} className="flex-1 flex flex-col items-center gap-2">
+                          <span className="text-[10px] text-white font-bold">${(exposure.val / 1000).toFixed(0)}K</span>
+                          <div className="w-full bg-[#1c1c22] rounded-none transition-all duration-500" style={{ height: `${(exposure.val / maxVal) * 150}px` }} />
+                          <span className="text-[10px] text-muted-foreground font-semibold text-center">{exposure.name}</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -1881,18 +2418,17 @@ function Dashboard() {
                     <p className="text-xs text-muted-foreground">Average customer satisfaction metrics</p>
                   </div>
                   <div className="h-[220px] w-full flex items-end justify-between gap-2 pt-2">
-                    {[
-                      { name: "Jan", val: 80 },
-                      { name: "Mar", val: 65 },
-                      { name: "May", val: 78 },
-                      { name: "Jul", val: 54 },
-                    ].map((sent, i) => (
-                      <div key={i} className="flex-1 flex flex-col items-center gap-2">
-                        <span className="text-[10px] text-white font-bold">{sent.val}%</span>
-                        <div className="w-full bg-white rounded-none" style={{ height: `${(sent.val / 100) * 150}px` }} />
-                        <span className="text-[10px] text-muted-foreground font-semibold">{sent.name}</span>
-                      </div>
-                    ))}
+                    {realAccounts.map((acc, i) => {
+                      const safetyScore = 100 - acc.health;
+                      const isSelected = acc.id === selectedTenantId;
+                      return (
+                        <div key={i} className={`flex-1 flex flex-col items-center gap-2 transition-all duration-300 ${isSelected ? 'scale-105' : 'opacity-50 hover:opacity-85'}`}>
+                          <span className={`text-[10px] font-bold ${isSelected ? 'text-primary' : 'text-white'}`}>{safetyScore}%</span>
+                          <div className={`w-full rounded-none transition-all duration-500 ${isSelected ? 'bg-primary shadow-[0_0_10px_rgba(59,130,246,0.5)]' : 'bg-neutral-800'}`} style={{ height: `${(safetyScore / 100) * 150}px` }} />
+                          <span className={`text-[10px] font-semibold truncate max-w-[80px] text-center ${isSelected ? 'text-primary font-bold' : 'text-muted-foreground'}`}>{acc.name}</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -1921,32 +2457,48 @@ function Dashboard() {
                 <div className="border-b border-[#1a1a1f] pb-4 flex justify-between items-start">
                   <div>
                     <h2 className="text-xl font-bold text-white">CS Meeting Prep Briefing</h2>
-                    <p className="text-xs text-primary font-semibold mt-0.5">Subject Account: Acme Corp • Prepared by RetainGraph AI</p>
+                    <p className="text-xs text-primary font-semibold mt-0.5">
+                      Subject Account: {activeBrief ? (realAccounts.find(a => a.id === selectedTenantId)?.name || selectedTenantId) : "Acme Corp"} • Prepared by RetainGraph AI
+                    </p>
                   </div>
                   <div className="text-right">
                     <span className="text-[10px] text-muted-foreground block">Prep Score</span>
-                    <span className="text-lg font-black text-emerald-500">92 / 100</span>
+                    <span className="text-lg font-black text-emerald-500">
+                      {activeBrief ? Math.round(activeBrief.briefConfidence * 100) : 92} / 100
+                    </span>
                   </div>
                 </div>
 
                 <div className="space-y-4 text-xs text-muted-foreground">
                   <div className="space-y-1">
                     <h3 className="text-xs font-bold text-white uppercase tracking-wider">Executive Summary</h3>
-                    <p>Acme Corp is presenting high risk due to API Key authorization failures and support backlogs. Johnathan Wick has scheduled this call to alignment pricing concerns and expansion potential.</p>
+                    <p>{activeBrief?.executiveSummary || "Acme Corp is presenting high risk due to API Key authorization failures and support backlogs. Johnathan Wick has scheduled this call to alignment pricing concerns and expansion potential."}</p>
                   </div>
 
                   <div className="space-y-1">
                     <h3 className="text-xs font-bold text-white uppercase tracking-wider">Key Talking Points</h3>
                     <ul className="list-disc pl-5 space-y-1.5">
-                      <li>Highlight engineers resolving the API gateway timeouts.</li>
-                      <li>Address the competitive comparison with *RelateGraph* directly with Wick.</li>
-                      <li>Offer a dedicated architect to sync their Neo4j/Cognee data pipelines.</li>
+                      {activeBrief?.recommendedTalkingPoints && activeBrief.recommendedTalkingPoints.length > 0 ? (
+                        activeBrief.recommendedTalkingPoints.map((point: string, i: number) => (
+                          <li key={i}>{point}</li>
+                        ))
+                      ) : (
+                        <>
+                          <li>Highlight engineers resolving the API gateway timeouts.</li>
+                          <li>Address the competitive comparison with *RelateGraph* directly with Wick.</li>
+                          <li>Offer a dedicated architect to sync their Neo4j/Cognee data pipelines.</li>
+                        </>
+                      )}
                     </ul>
                   </div>
 
                   <div className="space-y-1">
                     <h3 className="text-xs font-bold text-white uppercase tracking-wider">Open Commitments</h3>
-                    <p>Deliver the custom webhook connector module requested by Cho on Support Ticket #40921 by next Wednesday.</p>
+                    <p>
+                      {activeBrief?.commitments && activeBrief.commitments.length > 0
+                        ? activeBrief.commitments.join(", ")
+                        : "Deliver the custom webhook connector module requested by Cho on Support Ticket #40921 by next Wednesday."}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -2002,6 +2554,61 @@ function Dashboard() {
                   >
                     Save Changes
                   </button>
+                </div>
+              </div>
+
+              {/* DEVELOPER PLAYGROUND & CONTROLS */}
+              <div className="bg-card/45 border border-[#1a1a1f] rounded-none p-6 relative max-w-2xl mt-6">
+                <CornerBrackets />
+                <div className="space-y-1 mb-4">
+                  <h2 className="text-sm font-bold text-white uppercase tracking-wider font-display">Developer Operations Playground</h2>
+                  <p className="text-xs text-muted-foreground">Test the ingestion and risk evaluation pipelines directly from the user interface</p>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Ingestion Panel */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-white block">Simulate Raw Customer Objection / Signal</label>
+                    <textarea
+                      value={ingestInput}
+                      onChange={(e) => setIngestInput(e.target.value)}
+                      placeholder="E.g., objection: We are considering competitor RelateGraph because the support response delay is too high."
+                      rows={3}
+                      className="w-full bg-[#121216]/50 border border-[#1a1a1f] rounded-lg p-2.5 text-xs text-white outline-none focus:border-primary/50 resize-none"
+                    />
+                    <button
+                      onClick={handleIngestPlayground}
+                      className="px-3 py-1.5 bg-white text-black hover:bg-neutral-200 rounded font-semibold text-xs transition-colors"
+                    >
+                      Ingest Client Interaction
+                    </button>
+                  </div>
+
+                  {/* Health Worker Panel */}
+                  <div className="pt-2 border-t border-[#1a1a1f] flex items-center justify-between">
+                    <div>
+                      <h3 className="text-xs font-bold text-white">Trigger Health evaluation Pass</h3>
+                      <p className="text-[11px] text-muted-foreground">Runs the Health Evaluation worker for demo-tenant-123</p>
+                    </div>
+                    <button
+                      onClick={handleTriggerHealthAudit}
+                      className="px-3 py-1.5 bg-neutral-900 border border-[#1a1a1f] hover:bg-neutral-800 text-white rounded font-semibold text-xs transition-colors"
+                    >
+                      Trigger Health Audit Pass
+                    </button>
+                  </div>
+
+                  {/* Logs Screen */}
+                  {playgroundLogs.length > 0 && (
+                    <div className="pt-2 border-t border-[#1a1a1f] space-y-1.5">
+                      <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Playground execution log</div>
+                      <div className="bg-[#050506] border border-[#1a1a1f] p-3 rounded font-mono text-[10px] text-emerald-400 space-y-1 max-h-24 overflow-y-auto">
+                        {playgroundLogs.map((log, idx) => (
+                          <div key={idx}>{log}</div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

@@ -2,6 +2,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import { SiteLayout } from "@/components/site/Layout";
 import { Award, Cpu, Lock, Users } from "lucide-react";
 import arch from "@/assets/architecture.jpg";
+import insightNewOne from "@/assets/insight_black_one.png";
+import insightNewTwo from "@/assets/insight_black_two.png";
+import insightNewThree from "@/assets/insight_black_three.png";
+import memberAnya from "@/assets/member_anya.png";
+import memberDario from "@/assets/member_dario.png";
+import memberRue from "@/assets/member_rue.png";
+import memberMila from "@/assets/member_mila.png";
 
 export const Route = createFileRoute("/about")({
   component: About,
@@ -33,13 +40,13 @@ function About() {
       <section className="mx-auto max-w-[1400px] px-6 md:px-10 pb-24">
         <div className="grid grid-cols-3 gap-6">
           <div className="aspect-[3/4] bg-card rounded-md overflow-hidden grain">
-            <img src={arch} alt="" className="w-full h-full object-cover grayscale" loading="lazy" />
+            <img src={insightNewOne} alt="" className="w-full h-full object-cover grayscale opacity-75" loading="lazy" />
           </div>
           <div className="aspect-[3/4] bg-card rounded-md overflow-hidden">
-            <img src={arch} alt="" className="w-full h-full object-cover" loading="lazy" />
+            <img src={insightNewTwo} alt="" className="w-full h-full object-cover opacity-85" loading="lazy" />
           </div>
           <div className="aspect-[3/4] bg-card rounded-md overflow-hidden grain">
-            <img src={arch} alt="" className="w-full h-full object-cover grayscale contrast-125" loading="lazy" />
+            <img src={insightNewThree} alt="" className="w-full h-full object-cover grayscale contrast-125 opacity-75" loading="lazy" />
           </div>
         </div>
       </section>
@@ -82,13 +89,20 @@ function About() {
         <h2 className="display text-4xl md:text-6xl mb-16">A small senior team, deeply embedded.</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           {[
-            { name: "Anya Voss", role: "Founder / ML lead" },
-            { name: "Dario Kim", role: "Systems architect" },
-            { name: "Rue Chen", role: "Research engineer" },
-            { name: "Mila Farid", role: "Head of platform" },
+            { name: "Anya Voss", role: "Founder / ML lead", portrait: memberAnya },
+            { name: "Dario Kim", role: "Systems architect", portrait: memberDario },
+            { name: "Rue Chen", role: "Research engineer", portrait: memberRue },
+            { name: "Mila Farid", role: "Head of platform", portrait: memberMila },
           ].map((p, i) => (
             <div key={p.name}>
-              <div className={`aspect-[4/5] rounded-md mb-4 ${i%2 === 0 ? 'bg-secondary' : 'bg-card'} grain`} />
+              <div className="aspect-[4/5] rounded-md mb-4 bg-card overflow-hidden relative border border-border">
+                <img 
+                  src={p.portrait} 
+                  alt={p.name} 
+                  className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-500" 
+                  loading="lazy" 
+                />
+              </div>
               <div className="font-display">{p.name}</div>
               <div className="text-xs text-muted-foreground">{p.role}</div>
             </div>

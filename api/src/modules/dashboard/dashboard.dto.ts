@@ -12,6 +12,13 @@ export interface DashboardOverviewResponse {
     entitiesExtracted: number;
     interactionsToday: number;
     activeInsights: number;
+    breakdown?: {
+      emails: number;
+      tickets: number;
+      meetings: number;
+      other: number;
+      total: number;
+    };
   };
   workers: {
     ingestion: {
@@ -25,4 +32,6 @@ export interface DashboardOverviewResponse {
   };
   recentActivity: any[];
   recommendations: any[];
+  healthHistory?: any[];
+  campaignData?: any[];
 }
