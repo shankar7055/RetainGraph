@@ -16,14 +16,17 @@ export function Footer() {
   }, []);
 
   function handleModelClick() {
-    if (!modelRef.current) return;
+    if (!modelRef.current || typeof modelRef.current.adjustCameraOrbit !== 'function') return;
     
     // Add velocity in radians
     spinVelocityRef.current += 0.25;
     
     if (animationFrameRef.current === null) {
       const animate = () => {
-        if (!modelRef.current) return;
+        if (!modelRef.current || typeof modelRef.current.adjustCameraOrbit !== 'function') {
+          animationFrameRef.current = null;
+          return;
+        }
         
         // Adjust camera orbit horizontally by velocity
         modelRef.current.adjustCameraOrbit(spinVelocityRef.current, 0, 0);

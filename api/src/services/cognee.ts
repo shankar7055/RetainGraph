@@ -1,7 +1,6 @@
-import { PrismaClient, ClientInteraction } from '@prisma/client';
+import { ClientInteraction } from '@prisma/client';
 import { getMockCogneeContext } from './mockCogneeData';
-
-const prisma = new PrismaClient();
+import { prisma } from '../lib/prisma';
 
 export class CogneeService {
   private apiUrl: string;

@@ -6,6 +6,7 @@ import orb from "@/assets/orb.jpg";
 import arch from "@/assets/architecture.jpg";
 import { useScrollScene, useMarquee } from "@/lib/scroll";
 import { Magnetic, TiltCard, Spotlight } from "@/components/site/Interactive";
+import { LiquidMetal } from '@paper-design/shaders-react';
 
 export const Route = createFileRoute("/")({
   component: Home,
@@ -47,11 +48,29 @@ export function Home() {
       <div ref={sceneRef}>
         {/* HERO */}
         <section className="relative overflow-hidden min-h-[92vh] flex items-end">
-          <div className="absolute inset-0" data-parallax="0.25">
-            <img src={heroNoise} alt="" className="absolute inset-0 w-full h-[120%] object-cover opacity-70" />
+          <div className="absolute inset-0 z-0 pointer-events-none" data-parallax="0.25">
+            <LiquidMetal
+              width={1920}
+              height={1080}
+              image="/whitelogo.png"
+              colorBack="#000000"
+              colorTint="#307dcf73"
+              shape={undefined}
+              repetition={6}
+              softness={0.8}
+              shiftRed={1}
+              shiftBlue={-1}
+              distortion={0.4}
+              contour={0.4}
+              angle={0}
+              speed={1}
+              scale={0.6}
+              fit="contain"
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
           </div>
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/40 to-background" />
-          <div className="relative mx-auto max-w-[1400px] px-6 md:px-10 pt-24 pb-24 w-full">
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/40 to-background z-0 pointer-events-none" />
+          <div className="relative mx-auto max-w-[1400px] px-6 md:px-10 pt-24 pb-24 w-full z-10">
             <div className="eyebrow flex items-center gap-2 mb-8" data-reveal>
               <Stripes /> RetainGraph / 2026
             </div>

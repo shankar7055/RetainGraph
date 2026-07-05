@@ -1,4 +1,4 @@
-import { cogneeService } from '../src/services/CogneeService';
+import { cogneeService } from '../src/services/cognee';
 import dotenv from 'dotenv';
 dotenv.config();
 

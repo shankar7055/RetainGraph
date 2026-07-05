@@ -43,6 +43,20 @@ export const getMockCogneeContext = (tenantId: string) => {
   // Return a combination of key events (meeting, competitor mention, recent crash) 
   // to simulate Cognee successfully retrieving historically linked events
   return JSON.stringify({
+    nodes: [
+      { id: "1", name: "Acme", type: "Customer" },
+      { id: "2", name: "Salesforce", type: "Competitor" },
+      { id: "3", name: "Johnathan Wick", type: "CTO" },
+      { id: "4", name: "API Gateway", type: "Product" },
+      { id: "5", name: "Helen Cho", type: "Sponsor" },
+      { id: "6", name: "Analytics Dashboard", type: "Component" }
+    ],
+    edges: [
+      { source: "1", target: "2", relation: "considering" },
+      { source: "1", target: "3", relation: "has_champion" },
+      { source: "3", target: "4", relation: "reported_bug" },
+      { source: "5", target: "6", relation: "championing" }
+    ],
     results: [
       { text: mockInteractions[4]!.payload, relevance: 0.88 },
       { text: mockInteractions[5]!.payload, relevance: 0.95 },

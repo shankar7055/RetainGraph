@@ -1,0 +1,315 @@
+openapi: 3.0.3
+info:
+  title: RetainGraph API Specification
+  description: Enterprise REST API definition for the RetainGraph AI-native Customer Success Intelligence Platform. Contains ingestion pipeline, knowledge graph visualizer context, RAG chat copilot, pre-call brief compiler, and procedural memory seeding.
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Local Enterprise Development Server
+  - url: http://localhost:3000/api
+    description: Legacy Endpoint Namespace
+paths:
+  /ingest:
+    post:
+      summary: Ingest Client Interaction
+      description: Receives raw support transcripts, email logs, or Slack threads to parse entities and update customer timeline context.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tenantId
+                - payload
+              properties:
+                tenantId:
+                  type: string
+                  example: demo-tenant-123
+                  description: The customer organization unique identifier.
+                payload:
+                  type: string
+                  example: "objection: We are evaluating Salesforce because your API keeps failing."
+                  description: The raw text interaction message.
+      responses:
+        '200':
+          description: Ingestion processed and queued successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  interactionId:
+                    type: string
+                    example: c7b3e210-91a5-4f40-8b1e-cc720a4b92c4
+
+  /dashboard/overview:
+    get:
+      summary: Get Portfolio Dashboard Statistics
+      description: Returns executive KPIs, ARR numbers under risk, worker operational statuses, and latest recommended actions.
+      parameters:
+        - name: tenantId
+          in: query
+          required: false
+          schema:
+            type: string
+            default: demo-tenant-123
+          description: Filter stats by specific customer portfolio context.
+      responses:
+        '200':
+          description: Overview stats fetched successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  portfolio:
+                    type: object
+                    properties:
+                      healthScore:
+                        type: integer
+                        example: 78
+                      healthyAccounts:
+                        type: integer
+                        example: 118
+                      warningAccounts:
+                        type: integer
+                        example: 16
+                      criticalAccounts:
+                        type: integer
+                        example: 8
+                      totalAccounts:
+                        type: integer
+                        example: 142
+                  statistics:
+                    type: object
+                    properties:
+                      graphNodes:
+                        type: integer
+                        example: 2842
+                      graphEdges:
+                        type: integer
+                        example: 9211
+                      entitiesExtracted:
+                        type: integer
+                        example: 1136
+                      interactionsToday:
+                        type: integer
+                        example: 41
+                      activeInsights:
+                        type: integer
+                        example: 8
+
+  /accounts:
+    get:
+      summary: List Customer Accounts
+      description: Exposes the full database checklist of customers showing active CS owners, health scoring, renewal proximity, and sync metrics.
+      responses:
+        '200':
+          description: Accounts retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      example: demo-tenant-123
+                    name:
+                      type: string
+                      example: Acme Corp
+                    csOwner:
+                      type: string
+                      example: Sarah Jenkins
+                    arrValue:
+                      type: string
+                      example: "$145,000"
+                    renewalDate:
+                      type: string
+                      format: date-time
+                      example: 2026-10-12T00:00:00.000Z
+
+  /accounts/{id}:
+    get:
+      summary: Get Account Details
+      description: Fetches full metadata, recent logs, support status, and CSM configurations for a specific account.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Customer account unique identifier.
+      responses:
+        '200':
+          description: Detailed account metadata.
+
+  /accounts/{id}/brief:
+    post:
+      summary: Compile Pre-Call Brief
+      description: Invokes LLM reasoning to compile grounded customer briefings, root-causes, open commitments, and recommended talking points.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Customer account identifier.
+      responses:
+        '200':
+          description: Generated brief results.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  summary:
+                    type: string
+                  recommendedTalkingPoints:
+                    type: array
+                    items:
+                      type: string
+                  nextActions:
+                    type: array
+                    items:
+                      type: string
+
+  /accounts/{id}/health:
+    get:
+      summary: Perform On-Demand Health Audit
+      description: Triggers a fresh Health Worker reasoning scan utilizing recent client interactions and knowledge graph relationships to calculate the authoritative risk score.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Health evaluation calculated.
+
+  /accounts/{id}/health/timeline:
+    get:
+      summary: Fetch Health Evaluation History
+      description: Returns historical risk trend logs and decisions, indicating which procedural memories were consulted.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Historical evaluation records.
+
+  /accounts/{id}/decision:
+    get:
+      summary: Fetch AI Risk Grounding Explanation
+      description: Exposes the exact graph entities, citations list, and active signals used by the LLM during the last evaluation pass.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Grounding logs.
+
+  /health/{id}/correct:
+    post:
+      summary: Dismiss Alert & Seed CSM Procedural Memory
+      description: Logs CSM correction feedback into database procedural memory, adjusting the parameters of subsequent Health Engine runs.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The health check record identifier (UUID) being dismissed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - correctionReason
+              properties:
+                correctionReason:
+                  type: string
+                  example: Salesforce mention was a standard competitor intelligence check, not active procurement.
+      responses:
+        '200':
+          description: Procedural memory successfully logged.
+
+  /accounts/{id}/graph:
+    get:
+      summary: Fetch Cognee Network Visualization Graph
+      description: Traverses Neo4j/Cognee database indexes to return nodes and relationship edges for visualization.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Graph serialization payload.
+
+  /chat:
+    post:
+      summary: Query AI Copilot
+      description: Grounded RAG search traversing customer history and connection graph nodes.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - question
+              properties:
+                question:
+                  type: string
+                  example: Why is Acme Corp marked as Critical Risk?
+      responses:
+        '200':
+          description: Grounded copilot answer.
+
+  /analytics:
+    get:
+      summary: Get Analytics Dashboard Metrics
+      description: Fetches timeseries sentiment distribution, ARR forecasts, and resolution rate percentages.
+      responses:
+        '200':
+          description: Timeseries data.
+
+  /insights:
+    get:
+      summary: List Priority Signals
+      description: Aggregates active anomaly detections across all monitored tenants.
+      responses:
+        '200':
+          description: Priority signals list.
+
+  /system/status:
+    get:
+      summary: Get Worker Heartbeat Telemetry
+      description: Returns health cards for Ingestion worker, Health evaluation worker, Redis queues, and DB connections.
+      responses:
+        '200':
+          description: Worker heartbeat payloads.
+
+  /system/pipeline:
+    get:
+      summary: Get Pipeline Ingestion Statistics
+      description: Exposes latencies, processing success rate, and queue sizes across database layers.
+      responses:
+        '200':
+          description: Ingestion pipeline performance telemetry.

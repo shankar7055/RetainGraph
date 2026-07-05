@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { cogneeService } from '../src/services/CogneeService';
+import { cogneeService } from '../src/services/cognee';
 
 const prisma = new PrismaClient();
 

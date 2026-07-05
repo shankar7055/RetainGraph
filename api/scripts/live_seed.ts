@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { cogneeService } from '../src/services/CogneeService';
+import { cogneeService } from '../src/services/cognee';
 import { mockInteractions } from '../src/services/mockCogneeData';
 import dotenv from 'dotenv';
 dotenv.config();

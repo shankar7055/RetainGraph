@@ -1,10 +1,7 @@
 import cron from 'node-cron';
-import { PrismaClient } from '@prisma/client';
-import { cogneeService } from '../services/CogneeService';
-import Groq from 'groq-sdk';
-
-const prisma = new PrismaClient();
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+import { prisma } from '../lib/prisma';
+import { cogneeService } from '../services/cognee';
+import { groq } from '../services/groq';
 
 export const evaluateTenantHealth = async (tenantId: string) => {
   try {
