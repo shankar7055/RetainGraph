@@ -4,6 +4,7 @@ import { cogneeService } from '../services/cognee';
 import { groq } from '../services/groq';
 import { authenticate } from '../middleware/tenant';
 import { evaluateTenantHealth } from '../workers/healthWorker';
+import { SecureCrypto } from '../ai/services/SecureCrypto';
 
 export const accountsRouter = Router();
 
@@ -166,7 +167,7 @@ accountsRouter.post('/tenants/:id/generate-email', authenticate, async (req: Req
 
     const systemPrompt = `You are a professional Customer Success Manager drafting an outreach email to a client.
 Client Company: ${tenant.name}
-Recommended Next Step (Internal): ${latestHealth.recommendedAction}
+Recommended Next Step (Internal): ${SecureCrypto.decrypt(latestHealth.recommendedAction)}
 
 Account History & Context:
 ${cogneeContext}

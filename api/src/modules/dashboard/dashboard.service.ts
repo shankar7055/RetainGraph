@@ -4,6 +4,7 @@ import { insightRepository } from '../insights/insights.repository';
 import { cogneeGateway } from '../../ai/gateways/CogneeGateway';
 import { DashboardOverviewResponse } from './dashboard.dto';
 import { prisma } from '../../shared/config/prisma';
+import { SecureCrypto } from '../../ai/services/SecureCrypto';
 
 export class DashboardService {
   public async getOverview(tenantId: string): Promise<DashboardOverviewResponse> {
@@ -89,15 +90,18 @@ export class DashboardService {
       .filter((h): h is NonNullable<typeof h> => h !== undefined && h.status === 'active' && h.riskScore > 40);
 
     const recommendations = activeHealthChecks.map(h => {
+      const rawCauses = SecureCrypto.decrypt(h.rootCauses || '[]');
+      const rawAction = SecureCrypto.decrypt(h.recommendedAction || '');
+      SecureCrypto.audit(h.tenantId, 'rootCauses', 'DASHBOARD_RECOMMENDATIONS');
       let parsedCauses = [];
       try {
-        parsedCauses = JSON.parse(h.rootCauses || '[]');
+        parsedCauses = JSON.parse(rawCauses);
       } catch (e) {}
       const mainCause = parsedCauses[0]?.evidence || 'Unspecified risk indicators';
 
       return {
         id: h.id,
-        title: h.recommendedAction || 'Schedule team sync to review account',
+        title: rawAction || 'Schedule team sync to review account',
         reason: mainCause,
         impact: h.riskScore > 70 ? 'High' : 'Medium',
         evidence: parsedCauses.map((c: any) => ({

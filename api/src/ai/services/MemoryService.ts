@@ -41,6 +41,7 @@ export class MemoryService {
 
         for (const inter of interactions) {
           const decryptedText = SecureCrypto.decrypt(inter.payload);
+          SecureCrypto.audit(tenantId, 'payload', 'GRAPH_FALLBACK_BUILD');
           const text = decryptedText.toLowerCase();
           if (text.includes("relategraph")) {
             fallbackNodes.push({ id: "RelateGraph", label: "RelateGraph", type: "Competitor" });
@@ -215,10 +216,13 @@ export class MemoryService {
       orderBy: { createdAt: 'desc' },
       take: 10,
     });
-    return list.map(i => ({
-      ...i,
-      payload: SecureCrypto.decrypt(i.payload)
-    }));
+    return list.map(i => {
+      SecureCrypto.audit(tenantId, 'payload', 'API_READ_RECENT_INTERACTIONS');
+      return {
+        ...i,
+        payload: SecureCrypto.decrypt(i.payload)
+      };
+    });
   }
 }
 

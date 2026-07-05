@@ -2,6 +2,7 @@ import cron from 'node-cron';
 import { prisma } from '../lib/prisma';
 import { cogneeService } from '../services/cognee';
 import { groq } from '../services/groq';
+import { SecureCrypto } from '../ai/services/SecureCrypto';
 
 export const evaluateTenantHealth = async (tenantId: string) => {
   try {
@@ -80,13 +81,16 @@ CRITICAL INSTRUCTION: Take this feedback into account. Do not flag similar non-i
        return;
     }
 
+    const encryptedRootCauses = SecureCrypto.encrypt(JSON.stringify(root_causes || []));
+    const encryptedAction = SecureCrypto.encrypt(recommended_action || 'Review account history');
+
     const healthRecord = await prisma.customerHealth.create({
       data: {
         tenantId,
         riskScore: risk_score || 50,
         confidence: confidence || 'medium',
-        rootCauses: JSON.stringify(root_causes || []),
-        recommendedAction: recommended_action || 'Review account history',
+        rootCauses: encryptedRootCauses,
+        recommendedAction: encryptedAction,
       },
     });
 
