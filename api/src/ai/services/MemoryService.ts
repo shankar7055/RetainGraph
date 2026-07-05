@@ -1,5 +1,6 @@
 import { cogneeGateway } from '../gateways/CogneeGateway';
 import { prisma } from '../../shared/config/prisma';
+import { SecureCrypto } from './SecureCrypto';
 
 export interface GraphContext {
   summary: {
@@ -39,7 +40,8 @@ export class MemoryService {
         ];
 
         for (const inter of interactions) {
-          const text = inter.payload.toLowerCase();
+          const decryptedText = SecureCrypto.decrypt(inter.payload);
+          const text = decryptedText.toLowerCase();
           if (text.includes("relategraph")) {
             fallbackNodes.push({ id: "RelateGraph", label: "RelateGraph", type: "Competitor" });
             fallbackEdges.push({ source: tenantName, target: "RelateGraph", relation: "evaluating" });
@@ -208,11 +210,15 @@ export class MemoryService {
   }
 
   public async getRecentInteractions(tenantId: string) {
-    return prisma.clientInteraction.findMany({
+    const list = await prisma.clientInteraction.findMany({
       where: { tenantId },
       orderBy: { createdAt: 'desc' },
       take: 10,
     });
+    return list.map(i => ({
+      ...i,
+      payload: SecureCrypto.decrypt(i.payload)
+    }));
   }
 }
 

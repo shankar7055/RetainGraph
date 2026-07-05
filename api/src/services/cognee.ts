@@ -1,6 +1,7 @@
 import { ClientInteraction } from '@prisma/client';
 import { getMockCogneeContext } from './mockCogneeData';
 import { prisma } from '../lib/prisma';
+import { SecureCrypto } from '../ai/services/SecureCrypto';
 
 export class CogneeService {
   private apiUrl: string;
@@ -64,8 +65,9 @@ export class CogneeService {
     const endpoint = `${this.apiUrl}/api/v1/add`;
     const formData = new FormData();
     
-    // Convert the payload string to a Blob so Cognee processes it as a text file
-    const textBlob = new Blob([interaction.payload], { type: 'text/plain' });
+    // Decrypt payload in memory temporarily for Cognee transfer
+    const decryptedPayload = SecureCrypto.decrypt(interaction.payload);
+    const textBlob = new Blob([decryptedPayload], { type: 'text/plain' });
     formData.append('data', textBlob, `interaction_${interaction.id}.txt`);
     formData.append('datasetName', interaction.tenantId);
 

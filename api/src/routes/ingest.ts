@@ -4,6 +4,8 @@ import { prisma } from '../lib/prisma';
 import { cogneeService } from '../services/cognee';
 import { authenticate } from '../middleware/tenant';
 
+import { SecureCrypto } from '../ai/services/SecureCrypto';
+
 export const ingestRouter = Router();
 
 const ingestPayloadSchema = z.object({
@@ -51,10 +53,12 @@ ingestRouter.post('/interactions/ingest', authenticate, async (req: Request, res
       targetTenantId = tenantRecord.id;
     }
 
+    const encryptedPayload = SecureCrypto.encrypt(payload);
+
     // Save to Prisma DB linked to the specific tenant ID
     const interaction = await prisma.clientInteraction.create({
       data: {
-        payload,
+        payload: encryptedPayload,
         tenantId: targetTenantId,
       },
     });

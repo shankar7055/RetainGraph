@@ -1,5 +1,7 @@
 import { prisma } from '../../shared/config/prisma';
 
+import { SecureCrypto } from '../../ai/services/SecureCrypto';
+
 export class AnalyticsRepository {
   public async getInteractionsTodayCount() {
     const today = new Date();
@@ -22,10 +24,26 @@ export class AnalyticsRepository {
   }
 
   public async getInteractionsBreakdown() {
-    const total = await prisma.clientInteraction.count();
-    const emails = await prisma.clientInteraction.count({ where: { payload: { contains: 'email' } } });
-    const tickets = await prisma.clientInteraction.count({ where: { payload: { contains: 'ticket' } } });
-    const meetings = await prisma.clientInteraction.count({ where: { payload: { contains: 'transcript' } } });
+    const list = await prisma.clientInteraction.findMany({
+      select: { payload: true }
+    });
+    
+    let emails = 0;
+    let tickets = 0;
+    let meetings = 0;
+
+    for (const item of list) {
+      const plaintext = SecureCrypto.decrypt(item.payload).toLowerCase();
+      if (plaintext.includes('email') || plaintext.includes('thread')) {
+        emails++;
+      } else if (plaintext.includes('ticket') || plaintext.includes('bug')) {
+        tickets++;
+      } else if (plaintext.includes('transcript') || plaintext.includes('call') || plaintext.includes('sync')) {
+        meetings++;
+      }
+    }
+
+    const total = list.length;
     const other = total - (emails + tickets + meetings);
     return { emails, tickets, meetings, other: other > 0 ? other : 0, total };
   }
