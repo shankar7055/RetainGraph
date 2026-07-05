@@ -5,8 +5,10 @@ export class ChatController {
   public async askQuestion(req: Request, res: Response) {
     try {
       const { tenantId, accountId, question } = req.body;
-      const tId = tenantId || 'demo-tenant-123';
-      const answer = await chatService.askQuestion(tId, accountId, question);
+      const paramId = req.params.id;
+      const tId = paramId || tenantId || 'demo-tenant-123';
+      const accId = paramId || accountId || tId;
+      const answer = await chatService.askQuestion(tId, accId, question);
       return res.json(answer);
     } catch (error) {
       console.error('[ChatController] Error in chat completion:', error);

@@ -17,7 +17,7 @@ export class GroqGateway {
   public async getChatCompletion(messages: any[], responseFormat?: { type: 'json_object' }) {
     const params: any = {
       messages,
-      model: 'openai/gpt-oss-20b',
+      model: process.env.GROQ_MODEL || 'openai/gpt-oss-20b',
       temperature: 0.1,
       max_tokens: 4096,
     };

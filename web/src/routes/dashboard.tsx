@@ -866,10 +866,34 @@ function Dashboard() {
               {/* KPI CARDS GRID */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 {[
-                  { title: "Total Customers", value: "142 Accounts", pct: "12.4%", inc: true, desc: "vs prior 30 days" },
-                  { title: "Healthy Accounts", value: "118 Active", pct: "3.2%", inc: true, desc: "vs prior 30 days" },
-                  { title: "Accounts at Risk", value: "8 Critical", pct: "40.0%", inc: false, desc: "vs prior 30 days" },
-                  { title: "Knowledge Graph Nodes", value: "2,842 Nodes", pct: "18.2%", inc: true, desc: "since yesterday" },
+                  { 
+                    title: "Total Customers", 
+                    value: overviewData?.portfolio ? `${overviewData.portfolio.totalAccounts} Accounts` : "142 Accounts", 
+                    pct: "12.4%", 
+                    inc: true, 
+                    desc: "vs prior 30 days" 
+                  },
+                  { 
+                    title: "Healthy Accounts", 
+                    value: overviewData?.portfolio ? `${overviewData.portfolio.healthyAccounts} Active` : "118 Active", 
+                    pct: "3.2%", 
+                    inc: true, 
+                    desc: "vs prior 30 days" 
+                  },
+                  { 
+                    title: "Accounts at Risk", 
+                    value: overviewData?.portfolio ? `${overviewData.portfolio.criticalAccounts + overviewData.portfolio.warningAccounts} Flagged` : "8 Critical", 
+                    pct: "40.0%", 
+                    inc: false, 
+                    desc: "vs prior 30 days" 
+                  },
+                  { 
+                    title: "Knowledge Graph Nodes", 
+                    value: overviewData?.statistics ? `${overviewData.statistics.graphNodes.toLocaleString()} Nodes` : "2,842 Nodes", 
+                    pct: "18.2%", 
+                    inc: true, 
+                    desc: "since yesterday" 
+                  },
                 ].map((kpi, idx) => (
                   <div
                     key={idx}
