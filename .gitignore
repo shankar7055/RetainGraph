@@ -8,3 +8,5 @@ dist-tsc
 .DS_Store
 *.db
 *.db-journal
+.vercel
+.env*.local
