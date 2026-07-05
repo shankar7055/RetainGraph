@@ -3,6 +3,7 @@ import { memoryService } from '../../ai/services/MemoryService';
 import { reasoningService } from '../../ai/services/ReasoningService';
 import { getHealthPrompt } from '../../ai/prompts/HealthPrompt';
 import { healthRepository } from '../../modules/health/health.repository';
+import { SecureCrypto } from '../../ai/services/SecureCrypto';
 
 export class HealthProcessor {
   public async evaluateTenantHealth(tenantId: string) {
@@ -95,8 +96,8 @@ CRITICAL INSTRUCTION: Take this feedback into account. Do not flag similar non-i
         tenantId,
         riskScore: risk_score || 50,
         confidence: confidence || 'medium',
-        rootCauses: JSON.stringify(root_causes || []),
-        recommendedAction: recommended_action || 'Review account history',
+        rootCauses: SecureCrypto.encrypt(JSON.stringify(root_causes || [])),
+        recommendedAction: SecureCrypto.encrypt(recommended_action || 'Review account history'),
       });
 
       console.log(`[HealthProcessor] Audited health for tenant ${tenantId}. Risk score: ${risk_score}`);

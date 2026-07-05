@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import { prisma } from '../lib/prisma';
-import { evaluateTenantHealth } from './healthWorker';
+import { healthProcessor } from './health/processor';
 
 async function runOneshotScan() {
   console.log('[ChurnScan] Starting oneshot churn risk sweep...');
@@ -12,7 +12,7 @@ async function runOneshotScan() {
 
     for (const tenant of tenants) {
       console.log(`[ChurnScan] Starting evaluation for tenant: ${tenant.name} (${tenant.id})`);
-      await evaluateTenantHealth(tenant.id);
+      await healthProcessor.evaluateTenantHealth(tenant.id);
     }
 
     console.log('[ChurnScan] Oneshot sweep completed successfully.');

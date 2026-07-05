@@ -3,7 +3,7 @@ import { prisma } from '../lib/prisma';
 import { cogneeService } from '../services/cognee';
 import { groq } from '../services/groq';
 import { authenticate } from '../middleware/tenant';
-import { evaluateTenantHealth } from '../workers/healthWorker';
+import { healthProcessor } from '../workers/health/processor';
 import { SecureCrypto } from '../ai/services/SecureCrypto';
 
 export const accountsRouter = Router();
@@ -338,7 +338,7 @@ accountsRouter.post('/tenants/:id/analyze', authenticate, async (req: Request, r
       return res.status(403).json({ error: 'Forbidden: API key does not match tenant ID' });
     }
 
-    const healthRecord = await evaluateTenantHealth(id);
+    const healthRecord = await healthProcessor.evaluateTenantHealth(id);
     if (!healthRecord) {
       return res.status(400).json({ error: 'Evaluation failed or no context found' });
     }

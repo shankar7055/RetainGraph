@@ -92,10 +92,10 @@ export class DashboardService {
     const recommendations = activeHealthChecks.map(h => {
       const rawCauses = SecureCrypto.decrypt(h.rootCauses || '[]');
       const rawAction = SecureCrypto.decrypt(h.recommendedAction || '');
-      SecureCrypto.audit(h.tenantId, 'rootCauses', 'DASHBOARD_RECOMMENDATIONS');
       let parsedCauses = [];
       try {
         parsedCauses = JSON.parse(rawCauses);
+        SecureCrypto.audit(h.tenantId, 'rootCauses', 'DASHBOARD_RECOMMENDATIONS');
       } catch (e) {}
       const mainCause = parsedCauses[0]?.evidence || 'Unspecified risk indicators';
 

@@ -1,6 +1,5 @@
 import { getMockCogneeContext } from '../../services/mockCogneeData';
-import dotenv from 'dotenv';
-dotenv.config();
+
 
 export class CogneeGateway {
   private apiUrl: string;

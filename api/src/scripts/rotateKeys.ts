@@ -37,14 +37,17 @@ const newKey = deriveKey(newKeyRaw);
 
 function reEncrypt(ciphertext: string): { newCiphertext: string; changed: boolean } {
   const plaintext = SecureCrypto.decrypt(ciphertext, oldKey);
-  // If decrypt returned unchanged text, it may be legacy plaintext or already using new key
-  if (plaintext === ciphertext) {
-    // Try encrypting as-is (legacy record migration)
-    const newCiphertext = SecureCrypto.encrypt(plaintext, newKey);
-    return { newCiphertext, changed: true };
+  // If decrypt returned the same text, it's either legacy plaintext or already on the new key
+  const isLegacyPlaintext = plaintext === ciphertext && !ciphertext.includes(':');
+  const isAlreadyOnNewKey = plaintext !== ciphertext && oldKey.equals(newKey);
+
+  if (isAlreadyOnNewKey) {
+    // Same key, already encrypted — nothing to do
+    return { newCiphertext: ciphertext, changed: false };
   }
+
   const newCiphertext = SecureCrypto.encrypt(plaintext, newKey);
-  return { newCiphertext, changed: newCiphertext !== ciphertext };
+  return { newCiphertext, changed: true };
 }
 
 async function rotateInteractions(): Promise<number> {
